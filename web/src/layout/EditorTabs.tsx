@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useContextMenu } from '../contextMenu.tsx';
 import { type Tab, useStore } from '../store.ts';
 
@@ -16,6 +16,12 @@ interface Props {
 // 탭은 모두 마운트해 두고 비활성 탭은 숨긴다(스크롤 위치·에디터 상태 유지)
 export function EditorTabs({ renderTab, tabActions }: Props) {
   const { tabs, activeTabId, setActiveTab, closeTab, closeOthers, closeAll } = useStore();
+  const barRef = useRef<HTMLDivElement>(null);
+
+  // 스크롤바를 숨겼으므로 활성 탭이 가려져 있으면 보이게 스크롤한다
+  useEffect(() => {
+    barRef.current?.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeTabId, tabs.length]);
 
   const openTabMenu = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,7 +37,14 @@ export function EditorTabs({ renderTab, tabActions }: Props) {
   }
   return (
     <div className="editor-tabs">
-      <div className="tab-bar">
+      <div
+        className="tab-bar"
+        ref={barRef}
+        onWheel={(e) => {
+          // 세로 휠을 가로 스크롤로(트랙패드 가로 스와이프는 그대로)
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+        }}
+      >
         {tabs.map((t) => (
           <div
             key={t.id}
