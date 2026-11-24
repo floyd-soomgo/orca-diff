@@ -27,7 +27,7 @@ orca-review
 
 ## 화면
 
-- **왼쪽 위 Commits**: 맨 위 `Working tree`와 선택한 브랜치의 커밋 목록. 기본값은 "기준 브랜치(`origin/HEAD`) 이후 커밋만"입니다. Shift+클릭으로 범위를 선택하면 합친 diff가 나옵니다. 우클릭하면 커밋 코멘트를 달 수 있습니다.
+- **왼쪽 위 Commits**: 맨 위 `Working tree`와 선택한 브랜치의 커밋 목록. 제목 줄의 돋보기로 메시지/작성자 필터를 엽니다(Esc로 닫기). 기본값은 "기준 브랜치(`origin/HEAD`) 이후 커밋만"입니다. Shift+클릭으로 범위를 선택하면 합친 diff가 나옵니다. 우클릭하면 커밋 코멘트를 달 수 있습니다.
 - **왼쪽 아래 Changes**: 변경 파일 트리. Working tree는 Unstaged/Staged로 나뉘고, 3초마다 다시 읽습니다.
 - **가운데 탭**: diff 탭(Split/Unified, 변경 뭉치/전체)과 읽기 전용 파일 탭이 있습니다. 탭의 💬로 파일 전체에 코멘트를 답니다.
 - **하단 도구 창**: Find Usages 결과와 Feedback 목록.

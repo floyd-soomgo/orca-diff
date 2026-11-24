@@ -30,7 +30,8 @@ function openCommitMenu(c: Commit, e: React.MouseEvent) {
 }
 
 export function CommitList() {
-  const { branch, base, baseOnly, filter, selection, select, refreshTick, toast } = useStore();
+  const { branch, base, baseOnly, filter, setFilter, selection, select, refreshTick, toast } = useStore();
+  const [searchOpen, setSearchOpen] = useState(false);
   const [commits, setCommits] = useState<Commit[]>([]);
   const [done, setDone] = useState(false);
   const loading = useRef(false);
@@ -90,7 +91,50 @@ export function CommitList() {
 
   return (
     <div className="commit-list">
-      <div className="panel-title">Commits</div>
+      {searchOpen ? (
+        <div className="panel-title panel-search">
+          <input
+            autoFocus
+            placeholder="커밋 메시지/작성자 필터"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setFilter('');
+                setSearchOpen(false);
+              }
+            }}
+          />
+          <button
+            className="icon-button small"
+            title="필터 닫기 (Esc)"
+            aria-label="필터 닫기"
+            onClick={() => {
+              setFilter('');
+              setSearchOpen(false);
+            }}
+          >
+            ×
+          </button>
+        </div>
+      ) : (
+        <div className="panel-title panel-title-row">
+          <span>Commits</span>
+          <button
+            className={`icon-button small ${filter ? 'active' : ''}`}
+            title="커밋 메시지/작성자 필터"
+            aria-label="커밋 메시지/작성자 필터"
+            onClick={() => setSearchOpen(true)}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
       <div className="list" onScroll={onScroll}>
         <div
           className={`row ${selection.mode === 'worktree' ? 'selected' : ''}`}

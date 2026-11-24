@@ -4,7 +4,7 @@ import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
 import { useStore } from '../store.ts';
 
 export function TopBar() {
-  const { branch, base, baseOnly, filter, setBranch, setBaseOnly, setFilter, refresh, toast } = useStore();
+  const { branch, base, baseOnly, setBranch, setBaseOnly, refresh, toast } = useStore();
   const [worktrees, setWorktrees] = useState<{ path: string; branch: string | null }[]>([]);
   const [branches, setBranches] = useState<Branches | null>(null);
 
@@ -52,7 +52,7 @@ export function TopBar() {
         <input type="checkbox" checked={baseOnly && !baseDisabled} disabled={baseDisabled} onChange={(e) => setBaseOnly(e.target.checked)} />
         기준 브랜치({base ?? '없음'}) 이후만
       </label>
-      <input className="search" placeholder="메시지/작성자 검색" value={filter} onChange={(e) => setFilter(e.target.value)} />
+      <span className="topbar-spacer" />
       <button className="icon-button" onClick={refresh} title="새로고침" aria-label="새로고침">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
           <path
