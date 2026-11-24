@@ -231,5 +231,7 @@ button.primary:hover { background: #1c8139; }
 
 /* 변경 파일 트리 */
 .row.dir { color: var(--dim); cursor: pointer; }
-.twisty { display: inline-block; width: 10px; color: var(--dim); font-size: 10px; }
+.twisty { flex: none; align-self: center; color: var(--dim); transition: transform 0.1s; }
+.twisty.open { transform: rotate(90deg); }
+.panel-actions .icon-button.small { width: 24px; height: 22px; }
 .panel-actions { display: flex; gap: 2px; }

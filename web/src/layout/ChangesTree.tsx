@@ -10,6 +10,15 @@ const POLL_MS = 3000;
 
 interface Group { title: string; source: Source; changes: Change[] }
 
+// 펼침/접힘 꺾쇠 아이콘(접히면 오른쪽, 펼치면 아래)
+function Twisty({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg className={`twisty ${collapsed ? '' : 'open'}`} width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+      <path fill="currentColor" d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+    </svg>
+  );
+}
+
 const INDENT_PX = 14;
 const BASE_PX = 8;
 const keyOf = (group: string, path: string) => `${group}|${path}`;
@@ -35,7 +44,7 @@ function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: 
         return (
           <div key={d.path}>
             <div className="row dir" style={pad(depth)} onClick={() => toggle(key)} title={d.path}>
-              <span className="twisty">{isCollapsed ? '▸' : '▾'}</span>
+              <Twisty collapsed={isCollapsed} />
               <span className="name">📁 {d.name}</span>
             </div>
             {!isCollapsed && <DirChildren group={group} node={d} depth={depth + 1} collapsed={collapsed} toggle={toggle} onOpen={onOpen} onMenu={onMenu} />}
@@ -130,12 +139,12 @@ export function ChangesTree() {
         <span>Changes</span>
         <span className="panel-actions">
           <button className="icon-button small" title="모두 접기" aria-label="모두 접기" onClick={collapseAll}>
-            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
               <path fill="currentColor" d="M10.896 2H8.75V.75a.75.75 0 0 0-1.5 0V2H5.104a.25.25 0 0 0-.177.427l2.896 2.896a.25.25 0 0 0 .354 0l2.896-2.896A.25.25 0 0 0 10.896 2ZM8.75 15.25a.75.75 0 0 1-1.5 0V14H5.104a.25.25 0 0 1-.177-.427l2.896-2.896a.25.25 0 0 1 .354 0l2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25Zm-6.5-6.5a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
             </svg>
           </button>
           <button className="icon-button small" title="모두 열기" aria-label="모두 열기" onClick={expandAll}>
-            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
               <path fill="currentColor" d="m8.177.677 2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25a.75.75 0 0 1-1.5 0V4H5.104a.25.25 0 0 1-.177-.427L7.823.677a.25.25 0 0 1 .354 0ZM7.25 10.75a.75.75 0 0 1 1.5 0V12h2.146a.25.25 0 0 1 .177.427l-2.896 2.896a.25.25 0 0 1-.354 0l-2.896-2.896A.25.25 0 0 1 5.104 12H7.25v-1.25Zm-5-2a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
             </svg>
           </button>
@@ -148,7 +157,7 @@ export function ChangesTree() {
           return (
             <div key={g.title}>
               <div className="row group" onClick={() => toggle(groupKey)}>
-                <span className="twisty">{groupCollapsed ? '▸' : '▾'}</span>
+                <Twisty collapsed={groupCollapsed} />
                 {g.title} <span className="count">{g.changes.length}</span>
               </div>
               {!groupCollapsed && (
