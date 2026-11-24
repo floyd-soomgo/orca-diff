@@ -170,6 +170,8 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
   // 라인 번호 영역: 호버하면 + 버튼, 드래그·Shift+클릭으로 코멘트 범위를 노란색으로 표시하고 놓으면 입력창을 연다
   const T = monaco.editor.MouseTargetType;
   const GUTTER = new Set([T.GUTTER_LINE_NUMBERS, T.GUTTER_GLYPH_MARGIN, T.GUTTER_LINE_DECORATIONS]);
+  const onGutter = (e: monaco.editor.IEditorMouseEvent) =>
+    GUTTER.has(e.target.type) && !(e.event.browserEvent.target as HTMLElement | null)?.closest('.overlayWidgets, .diff-hidden-lines');
   const hoverDeco = { old: ctx.editors.old.createDecorationsCollection(), new: ctx.editors.new.createDecorationsCollection() };
   const rangeDeco = { old: ctx.editors.old.createDecorationsCollection(), new: ctx.editors.new.createDecorationsCollection() };
   let drag: { side: Side; anchor: number; current: number } | null = null;
@@ -180,7 +182,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
       {
         range: new monaco.Range(Math.min(a, b), 1, Math.max(a, b), 1),
         // zIndex: diff의 추가/삭제 줄 배경보다 위에 칠한다
-        options: { isWholeLine: true, className: 'comment-range-line', linesDecorationsClassName: 'comment-range-gutter', zIndex: 100 },
+        options: { isWholeLine: true, className: 'comment-range-line', marginClassName: 'comment-range-margin', zIndex: 100 },
       },
     ]);
   };
@@ -218,7 +220,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     return [
       editor.onMouseDown((e) => {
         const line = e.target.position?.lineNumber;
-        if (!GUTTER.has(e.target.type) || !line || !e.event.leftButton) return;
+        if (!onGutter(e) || !line || !e.event.leftButton) return;
         const anchor = e.event.shiftKey && shiftAnchor?.side === side ? shiftAnchor.line : line;
         shiftAnchor = { side, line: anchor };
         drag = { side, anchor, current: line };
@@ -230,7 +232,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
       editor.onMouseMove((e) => {
         const line = e.target.position?.lineNumber;
         hoverDeco[side].set(
-          !drag && line && GUTTER.has(e.target.type)
+          !drag && line && onGutter(e)
             ? [{ range: new monaco.Range(line, 1, line, 1), options: { glyphMarginClassName: 'comment-plus' } }]
             : [],
         );

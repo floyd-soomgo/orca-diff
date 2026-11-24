@@ -108,7 +108,7 @@ export function App() {
     <div className="app">
       <TopBar />
       <div className="main">
-        <div className="left" style={{ width: leftWidth }}>
+        <div className="left-pane" style={{ width: leftWidth }}>
           <div style={{ height: commitsHeight, display: 'flex' }}>
             <CommitList onCommitContextMenu={(commit, e) => setMenu({ x: e.clientX, y: e.clientY, commit })} />
           </div>
@@ -116,7 +116,7 @@ export function App() {
           <ChangesTree />
         </div>
         <Splitter direction="vertical" size={leftWidth} onResize={setLeftWidth} min={200} />
-        <div className="center">
+        <div className="center-pane">
           <EditorTabs renderTab={renderTab} tabActions={fileCommentButton} />
           {bottomOpen && <Splitter direction="horizontal" size={bottomHeight} onResize={setBottomHeight} invert />}
           <div style={{ height: bottomOpen ? bottomHeight : 'auto', display: 'flex' }}>

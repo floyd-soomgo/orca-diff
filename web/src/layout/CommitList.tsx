@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Commit } from '../../../server/shared/types.ts';
 import { getCommits } from '../api.ts';
+import { useFeedback } from '../feedback/storage.ts';
 import { useStore } from '../store.ts';
 
 const PAGE = 200;
@@ -115,10 +116,15 @@ export function CommitList({ onCommitContextMenu }: Props) {
         {visible.length === 0 && <div className="empty">{commits.length === 0 ? '커밋이 없습니다' : '검색 결과가 없습니다'}</div>}
       </div>
       {detail && (
-        <details className="commit-detail">
+        <details className="commit-detail" open key={detail.sha}>
           <summary>{detail.sha.slice(0, 10)} · {detail.author} &lt;{detail.email}&gt;</summary>
           <pre>{detail.subject}{detail.body ? `\n\n${detail.body}` : ''}</pre>
-          <div className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</div>
+          <div className="commit-detail-footer">
+            <span className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</span>
+            <button onClick={() => useFeedback.getState().openDialog({ kind: 'commit', sha: detail.sha, subject: detail.subject })}>
+              💬 커밋에 코멘트
+            </button>
+          </div>
         </details>
       )}
     </div>
