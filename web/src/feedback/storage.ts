@@ -1,42 +1,59 @@
 import { create } from 'zustand';
-import { WT } from '../api.ts';
+import { getComments, saveComments as saveCommentsApi, WT } from '../api.ts';
+import { getPref, setPref } from '../prefs.ts';
 import { useStore } from '../store.ts';
 import type { CommentTarget, ReviewComment } from './model.ts';
 
-const commentsKey = (wt: string) => `orca-review:comments:${wt}`;
-const targetKey = (wt: string) => `orca-review:target:${wt}`;
+const legacyCommentsKey = (wt: string) => `orca-review:comments:${wt}`;
+const legacyTargetKey = (wt: string) => `orca-review:target:${wt}`;
 
-export function loadComments(wt: string): ReviewComment[] {
+// 예전 버전이 브라우저 저장소에 남긴 코멘트(서버로 옮길 때만 읽는다)
+function legacyComments(wt: string): ReviewComment[] {
   try {
-    const v = JSON.parse(localStorage.getItem(commentsKey(wt)) ?? '[]');
+    const v = JSON.parse(localStorage.getItem(legacyCommentsKey(wt)) ?? '[]');
     return Array.isArray(v) ? v : [];
   } catch {
     return [];
   }
 }
 
-export function saveComments(wt: string, list: ReviewComment[]): boolean {
-  try {
-    localStorage.setItem(commentsKey(wt), JSON.stringify(list));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// 마지막으로 고른 피드백 대상 터미널(워크트리별)도 서버 설정에 둔다
 export function loadTarget(wt: string): string | null {
+  const saved = getPref<Record<string, string>>('feedbackTargets', {})[wt];
+  if (saved) return saved;
   try {
-    return localStorage.getItem(targetKey(wt));
+    return localStorage.getItem(legacyTargetKey(wt));
   } catch {
     return null;
   }
 }
 
 export function saveTarget(wt: string, handle: string): void {
+  setPref('feedbackTargets', { ...getPref<Record<string, string>>('feedbackTargets', {}), [wt]: handle });
+}
+
+// 저장 요청이 순서대로 가도록 한 줄로 세운다(늦게 도착한 옛 목록이 새 목록을 덮지 않게)
+let saveQueue: Promise<unknown> = Promise.resolve();
+function persist(comments: ReviewComment[]) {
+  saveQueue = saveQueue
+    .then(() => saveCommentsApi(comments))
+    .catch((e: Error) => useStore.getState().toast(`코멘트 저장 실패: ${e.message}. 새로고침하면 사라질 수 있습니다`, 'error'));
+}
+
+// 앱 시작 전에 서버에서 코멘트를 읽는다. 서버에 없고 브라우저에 예전 코멘트가 있으면 서버로 옮긴다.
+export async function preloadComments(): Promise<void> {
   try {
-    localStorage.setItem(targetKey(wt), handle);
-  } catch {
-    // 마지막 대상 기억은 편의 기능
+    let comments = await getComments();
+    if (comments.length === 0) {
+      const legacy = legacyComments(WT);
+      if (legacy.length > 0) {
+        await saveCommentsApi(legacy);
+        comments = legacy;
+      }
+    }
+    useFeedback.setState({ comments });
+  } catch (e) {
+    useStore.getState().toast(`코멘트를 불러오지 못했습니다: ${(e as Error).message}`, 'error');
   }
 }
 
@@ -55,11 +72,10 @@ interface FeedbackState {
 export const useFeedback = create<FeedbackState>((set, get) => {
   const commit = (comments: ReviewComment[]) => {
     set({ comments });
-    // 저장 실패(용량 초과 등)는 코멘트 유실로 이어지므로 알린다
-    if (!saveComments(WT, comments)) useStore.getState().toast('코멘트를 브라우저 저장소에 저장하지 못했습니다. 새로고침하면 사라질 수 있습니다', 'error');
+    persist(comments);
   };
   return {
-    comments: loadComments(WT),
+    comments: [],
     dialog: null,
     add: (target, body) =>
       commit([...get().comments, { id: crypto.randomUUID(), target, body, createdAt: Date.now(), sentAt: null, stale: false }]),

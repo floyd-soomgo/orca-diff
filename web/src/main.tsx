@@ -14,7 +14,8 @@ async function start() {
   }
   // 패널 크기·글꼴 등 설정을 먼저 읽은 뒤 앱 모듈을 불러온다(모듈 초기화 때 설정을 읽음)
   await loadPrefs();
-  const { App } = await import('./App.tsx');
+  const [{ App }, { preloadComments }] = await Promise.all([import('./App.tsx'), import('./feedback/storage.ts')]);
+  await preloadComments();
   root.render(
     <StrictMode>
       <App />
