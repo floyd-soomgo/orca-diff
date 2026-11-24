@@ -7,6 +7,7 @@ import { EditorTabs } from './layout/EditorTabs.tsx';
 import { Splitter, usePanelSize } from './layout/Splitter.tsx';
 import { TopBar } from './layout/TopBar.tsx';
 import { ContextMenu, copyText, type MenuItem, useContextMenu } from './contextMenu.tsx';
+import { Tooltip } from './Tooltip.tsx';
 import { attachComments, type CommentsHandle } from './feedback/commentZones.ts';
 import { CommentDialog, FeedbackPanel } from './feedback/FeedbackPanel.tsx';
 import { useFeedback } from './feedback/storage.ts';
@@ -192,6 +193,7 @@ export function App() {
       <NavLoadingIndicator />
       <CommentDialog />
       <ContextMenu />
+      <Tooltip />
       <Toasts />
     </div>
   );

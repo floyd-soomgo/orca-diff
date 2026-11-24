@@ -238,3 +238,8 @@ button.primary:hover { background: #1c8139; }
 .chip { height: 20px; padding: 0 8px; font-size: 11px; border-radius: 10px; text-transform: none; color: var(--dim); background: var(--bg); }
 .chip.active { color: #fff; background: var(--accent); border-color: var(--accent); }
 .panel-actions { align-items: center; }
+
+/* 앱 자체 툴팁(title 속성 대체) */
+.tooltip { position: fixed; z-index: 1100; pointer-events: none; display: flex; width: 360px; }
+.tooltip span { display: inline-block; padding: 4px 8px; background: #24292f; color: #fff; font-size: 12px; line-height: 1.4; border-radius: 6px; white-space: pre-line; box-shadow: var(--shadow); margin: 0 auto; }
+.tooltip.above { transform: translateY(-100%); }
