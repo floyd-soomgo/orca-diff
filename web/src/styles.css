@@ -227,3 +227,4 @@ button.primary:hover { background: #1c8139; }
 .tab-bar { scrollbar-width: none; }
 .tab-bar::-webkit-scrollbar { display: none; }
 .tab { flex: none; }
+.toggle-single.active { background: var(--accent); border-color: var(--accent); color: #fff; }

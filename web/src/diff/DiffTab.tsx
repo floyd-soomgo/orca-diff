@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 import type { Change, FilePair, Source } from '../../../server/shared/types.ts';
 import { getFilePair } from '../api.ts';
+import { formatJson } from './formatJson.ts';
 import { PatchView } from './PatchView.tsx';
 import { getPref, setPref } from '../prefs.ts';
 import { languageOf, monaco, READONLY_OPTIONS } from '../monaco/setup.ts';
@@ -11,7 +12,7 @@ import { useStore } from '../store.ts';
 const POLL_MS = 3000;
 const PREFS_KEY = 'orca-review:diff-prefs';
 
-interface DiffPrefs { sideBySide: boolean; hunksOnly: boolean }
+interface DiffPrefs { sideBySide: boolean; hunksOnly: boolean; formatJson: boolean }
 
 function loadPrefs(): DiffPrefs {
   let legacy: Partial<DiffPrefs> = {};
@@ -20,7 +21,7 @@ function loadPrefs(): DiffPrefs {
   } catch {
     // 예전 값이 없거나 깨졌으면 무시
   }
-  return { sideBySide: true, hunksOnly: true, ...getPref<Partial<DiffPrefs>>('diff', legacy) };
+  return { sideBySide: true, hunksOnly: true, formatJson: false, ...getPref<Partial<DiffPrefs>>('diff', legacy) };
 }
 
 // Split/Unified, Hunks/전체 토글은 모든 diff 탭이 공유하고 마지막 선택을 기억한다
@@ -28,8 +29,8 @@ const usePrefs = create<DiffPrefs & { set(p: Partial<DiffPrefs>): void }>((set, 
   ...loadPrefs(),
   set: (p) => {
     set(p);
-    const { sideBySide, hunksOnly } = get();
-    setPref('diff', { sideBySide, hunksOnly });
+    const { sideBySide, hunksOnly, formatJson } = get();
+    setPref('diff', { sideBySide, hunksOnly, formatJson });
   },
 }));
 
@@ -61,7 +62,8 @@ export function DiffTab({ source, change, attach }: Props) {
   // 새 파일/삭제 파일은 한쪽이 비어 있어 diff로 그리면 '빈 줄 1개 → 전체' 변경으로 보인다. 한쪽만 그린다.
   const single = change.status === 'A' ? 'new' : change.status === 'D' ? 'old' : undefined;
   const [pair, setPair] = useState<FilePair | null>(null);
-  const { sideBySide, hunksOnly, set } = usePrefs();
+  const { sideBySide, hunksOnly, formatJson: formatJsonOn, set } = usePrefs();
+  const isJson = /\.json$/i.test(change.path);
   const refreshTick = useStore((s) => s.refreshTick);
   const toast = useStore((s) => s.toast);
   const font = useFontSettings();
@@ -89,6 +91,17 @@ export function DiffTab({ source, change, attach }: Props) {
       if (timer) clearInterval(timer);
     };
   }, [source, change, refreshTick, toast]);
+
+  // JSON 포맷 보기: 양쪽을 정리해서 비교한다(줄 번호가 실제 파일과 달라지므로 코멘트·메뉴는 붙이지 않는다)
+  const view = useMemo(() => {
+    if (!pair || !isJson || !formatJsonOn || pair.tooLarge || pair.binary) return { shown: pair, formatted: false, failed: false };
+    const original = formatJson(pair.original);
+    const modified = formatJson(pair.modified);
+    if (original === null || modified === null) return { shown: pair, formatted: false, failed: true };
+    return { shown: { ...pair, original, modified }, formatted: true, failed: false };
+  }, [pair, isJson, formatJsonOn]);
+  const shown = view.shown;
+  const canAttach = !view.formatted;
 
   // 에디터 생성
   const showEditor = pair !== null && !pair.binary && !pair.tooLarge;
@@ -137,8 +150,8 @@ export function DiffTab({ source, change, attach }: Props) {
   // 내용 반영 + 부착(탐색·코멘트)
   useEffect(() => {
     const ed = singleRef.current;
-    if (!single || !ed || !pair) return;
-    const content = single === 'new' ? pair.modified : pair.original;
+    if (!single || !ed || !shown) return;
+    const content = single === 'new' ? shown.modified : shown.original;
     if (ed.getModel()?.getValue() !== content) ed.getModel()?.setValue(content);
     const lineCount = ed.getModel()?.getLineCount() ?? 1;
     const deco = ed.createDecorationsCollection([
@@ -151,27 +164,29 @@ export function DiffTab({ source, change, attach }: Props) {
         },
       },
     ]);
-    const disposable = attach?.({ editors: { original: ed, modified: ed }, single, pair, source, change });
+    const disposable = canAttach ? attach?.({ editors: { original: ed, modified: ed }, single, pair: shown, source, change }) : undefined;
     return () => {
       deco.clear();
       disposable?.dispose();
     };
-  }, [pair, attach, source, change, showEditor, single]);
+  }, [shown, canAttach, attach, source, change, showEditor, single]);
 
   useEffect(() => {
     const editor = editorRef.current;
     const model = editor?.getModel();
-    if (!editor || !model || !pair) return;
-    if (model.original.getValue() !== pair.original) model.original.setValue(pair.original);
-    if (model.modified.getValue() !== pair.modified) model.modified.setValue(pair.modified);
-    const disposable = attach?.({
-      editors: { original: editor.getOriginalEditor(), modified: editor.getModifiedEditor() },
-      pair,
-      source,
-      change,
-    });
+    if (!editor || !model || !shown) return;
+    if (model.original.getValue() !== shown.original) model.original.setValue(shown.original);
+    if (model.modified.getValue() !== shown.modified) model.modified.setValue(shown.modified);
+    const disposable = canAttach
+      ? attach?.({
+          editors: { original: editor.getOriginalEditor(), modified: editor.getModifiedEditor() },
+          pair: shown,
+          source,
+          change,
+        })
+      : undefined;
     return () => disposable?.dispose();
-  }, [pair, attach, source, change, showEditor]);
+  }, [shown, canAttach, attach, source, change, showEditor]);
 
   useEffect(() => {
     editorRef.current?.updateOptions(editorFontOptions(font));
@@ -190,6 +205,11 @@ export function DiffTab({ source, change, attach }: Props) {
           {change.oldPath ? `${change.oldPath} → ` : ''}
           {change.path}
         </span>
+        {isJson && !pair?.tooLarge && !pair?.binary && (
+          <button className={`toggle-single ${formatJsonOn ? 'active' : ''}`} title="JSON을 들여쓰기로 정리해서 비교" onClick={() => set({ formatJson: !formatJsonOn })}>
+            JSON 포맷
+          </button>
+        )}
         {single && <span className={`file-badge ${single}`}>{single === 'new' ? '새 파일' : '삭제된 파일'}</span>}
         {!single && !pair?.tooLarge && (
         <>
@@ -204,6 +224,8 @@ export function DiffTab({ source, change, attach }: Props) {
         </>
         )}
       </div>
+      {view.formatted && <div className="patch-notice">JSON 포맷 보기입니다. 줄 번호가 실제 파일과 달라서 라인 코멘트와 우클릭 메뉴를 쓸 수 없습니다(파일 전체 코멘트는 탭의 💬).</div>}
+      {view.failed && <div className="patch-notice">JSON 형식이 아니어서 원문 그대로 보여줍니다.</div>}
       {pair?.binary && <div className="editor-empty">바이너리 파일은 diff를 표시하지 않습니다</div>}
       {pair?.tooLarge && <PatchView source={source} change={change} />}
       {!pair && <div className="editor-empty">불러오는 중…</div>}
