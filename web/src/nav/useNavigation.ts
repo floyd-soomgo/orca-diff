@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Location } from '../../../server/shared/types.ts';
 import { getDefinition, getReferences, type NavQuery } from '../api.ts';
 import { monaco } from '../monaco/setup.ts';
+import { withLoading } from './loading.ts';
 import { navKeyAction } from './navKeys.ts';
 import { type NavEntry, useStore } from '../store.ts';
 
@@ -66,7 +67,7 @@ export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavCont
 
   const findUsages = async (pos: monaco.IPosition) => {
     try {
-      const locations = await getReferences(query(pos));
+      const locations = await withLoading('사용처 찾는 중', () => getReferences(query(pos)));
       setUsages({ title: wordLabel(pos), locations });
       setBottomPanel('usages');
     } catch (e) {
@@ -78,7 +79,7 @@ export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavCont
   const goToDeclaration = async (pos: monaco.IPosition) => {
     try {
       const word = editor.getModel()?.getWordAtPosition(pos);
-      const locations = await getDefinition(query(pos));
+      const locations = await withLoading('선언 찾는 중', () => getDefinition(query(pos)));
       if (locations.length === 0) {
         toast('선언을 찾을 수 없습니다');
         return;
@@ -87,7 +88,7 @@ export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavCont
         (l) => l.path === ctx.path && l.line === pos.lineNumber && word && l.column >= word.startColumn && l.column <= word.endColumn,
       );
       if (onDeclaration) {
-        const refs = await getReferences(query(pos));
+        const refs = await withLoading('사용처 찾는 중', () => getReferences(query(pos)));
         if (refs.length === 0) toast('사용처가 없습니다');
         else if (refs.length === 1) jumpTo(refs[0]);
         else setPopup({ ...popupAt(pos), title: `${wordLabel(pos)} 사용처 ${refs.length}건`, locations: refs });

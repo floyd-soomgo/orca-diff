@@ -204,3 +204,8 @@ button.primary:hover { background: #1c8139; }
 .menu-item .shortcut { color: var(--dim); font-size: 12px; }
 .menu-separator { height: 1px; margin: 4px 0; background: var(--border-muted); }
 .usages-panel .panel-title { text-transform: none; font-size: 12px; }
+
+.nav-loading { position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%); z-index: 980; display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); white-space: nowrap; }
+.nav-loading .hint { color: var(--dim); font-size: 12px; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

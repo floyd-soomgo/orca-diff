@@ -11,6 +11,7 @@ import { attachComments, type CommentsHandle } from './feedback/commentZones.ts'
 import { CommentDialog, FeedbackPanel } from './feedback/FeedbackPanel.tsx';
 import { useFeedback } from './feedback/storage.ts';
 import { FindUsagesPanel } from './nav/FindUsagesPanel.tsx';
+import { NavLoadingIndicator } from './nav/NavLoadingIndicator.tsx';
 import { UsagesPopup } from './nav/UsagesPopup.tsx';
 import { attachNavigation, type NavHandle, useGlobalNavKeys } from './nav/useNavigation.ts';
 import { monaco } from './monaco/setup.ts';
@@ -164,6 +165,7 @@ export function App() {
         </div>
       </div>
       <UsagesPopup />
+      <NavLoadingIndicator />
       <CommentDialog />
       <ContextMenu />
       <Toasts />
