@@ -25,8 +25,22 @@ interface EditorMenuOptions {
 }
 
 // 에디터 우클릭: Monaco 기본 메뉴 대신 앱 메뉴(탐색·코멘트·복사)
+// 선택 영역을 클립보드로(읽기 전용 에디터에서도 확실히 복사되도록 직접 쓴다)
+function copySelection(editor: monaco.editor.ICodeEditor) {
+  const sel = editor.getSelection();
+  const text = sel && !sel.isEmpty() ? editor.getModel()?.getValueInRange(sel) : '';
+  if (text) copyText(text, '선택한 텍스트');
+}
+
 function attachEditorMenu(editor: monaco.editor.ICodeEditor, opts: EditorMenuOptions): monaco.IDisposable {
-  return editor.onContextMenu((e) => {
+  const copyKey = editor.onKeyDown((e) => {
+    if (e.metaKey && e.keyCode === monaco.KeyCode.KeyC && !editor.getSelection()?.isEmpty()) {
+      e.preventDefault();
+      e.stopPropagation();
+      copySelection(editor);
+    }
+  });
+  const menu = editor.onContextMenu((e) => {
     e.event.preventDefault();
     e.event.stopPropagation();
     const pos = e.target.position ?? editor.getPosition();
@@ -39,6 +53,9 @@ function attachEditorMenu(editor: monaco.editor.ICodeEditor, opts: EditorMenuOpt
     const range = start === end ? `${start}` : `${start}-${end}`;
 
     const items: MenuItem[] = [];
+    if (inSelection) {
+      items.push({ label: '선택한 텍스트 복사', shortcut: '⌘C', onSelect: () => copySelection(editor) }, 'separator');
+    }
     if (opts.nav?.enabled) {
       items.push(
         { label: '선언으로 이동', shortcut: '⌘B', onSelect: () => opts.nav!.goToDeclaration(pos) },
@@ -58,6 +75,12 @@ function attachEditorMenu(editor: monaco.editor.ICodeEditor, opts: EditorMenuOpt
     );
     useContextMenu.getState().open(e.event.posx, e.event.posy, items);
   });
+  return {
+    dispose() {
+      copyKey.dispose();
+      menu.dispose();
+    },
+  };
 }
 
 // diff에서는 수정본(오른쪽)에서만 탐색한다. 워킹트리 unstaged가 아니면 diff에 보이는 내용 기준으로 질의한다.

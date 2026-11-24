@@ -22,7 +22,7 @@ export const useContextMenu = create<MenuState>((set) => ({
 export function copyText(text: string, label: string) {
   navigator.clipboard
     .writeText(text)
-    .then(() => useStore.getState().toast(`${label}을(를) 복사했습니다`))
+    .then(() => useStore.getState().toast(`복사했습니다 (${label})`))
     .catch((e: Error) => useStore.getState().toast(`복사 실패: ${e.message}`, 'error'));
 }
 
