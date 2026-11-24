@@ -73,6 +73,15 @@ describe('라우트', () => {
     expect((await get('/api/commits', { key: KEY, wt: fx.dir, ref: 'no-such-branch' })).status).toBe(500);
   });
 
+  test('/api/definition은 POST 본문을 받고 비TS 파일은 400', async () => {
+    const post = (body: object) =>
+      fetch(`${base}/api/definition?key=${KEY}`, { method: 'POST', body: JSON.stringify({ wt: fx.dir, ...body }) });
+    expect((await post({ path: 'Main.kt', line: 1, column: 1 })).status).toBe(400);
+    const res = await post({ path: 'a.ts', line: 1, column: 1 });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+  });
+
   test('/api/branches는 base를 포함한다', async () => {
     const res = await get('/api/branches', { key: KEY, wt: fx.dir });
     expect(await res.json()).toMatchObject({ current: 'main', local: ['main'], base: 'main' });

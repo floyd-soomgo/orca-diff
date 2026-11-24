@@ -5,6 +5,7 @@ import { extname, join } from 'node:path';
 import { assertInside, BadRequest, listChanges, readFilePair } from '../git/changes.ts';
 import { listBranches, listCommits, listWorktrees, resolveBaseRef } from '../git/history.ts';
 import { git, GitError } from '../git/run.ts';
+import { definition, type NavQuery, references } from '../ts/navigation.ts';
 import type { Change, ChangeStatus, Source } from '../shared/types.ts';
 
 export interface RequestContext {
@@ -62,6 +63,15 @@ function parseChange(q: URLSearchParams, wt: string): Change {
   return { path, oldPath, status, binary: q.get('binary') === '1' };
 }
 
+function parseNavQuery(body: unknown): NavQuery {
+  const b = (body ?? {}) as Record<string, unknown>;
+  if (typeof b.path !== 'string' || typeof b.line !== 'number' || typeof b.column !== 'number') {
+    throw new BadRequest('path, line, column이 필요합니다');
+  }
+  if (b.content !== undefined && typeof b.content !== 'string') throw new BadRequest('content는 문자열이어야 합니다');
+  return { path: b.path, line: b.line, column: b.column, content: b.content as string | undefined };
+}
+
 const coreRoutes: Routes = {
   'GET /api/worktrees': ({ wt }) => listWorktrees(wt),
   'GET /api/branches': async ({ wt }) => ({ ...(await listBranches(wt)), base: await resolveBaseRef(wt) }),
@@ -78,6 +88,8 @@ const coreRoutes: Routes = {
   },
   'GET /api/changes': ({ wt, query }) => listChanges(wt, parseSource(query.get('source'))),
   'GET /api/file-pair': ({ wt, query }) => readFilePair(wt, parseSource(query.get('source')), parseChange(query, wt)),
+  'POST /api/definition': ({ wt, body }) => definition(wt, parseNavQuery(body)),
+  'POST /api/references': ({ wt, body }) => references(wt, parseNavQuery(body)),
   'GET /api/file': async ({ wt, query }) => ({ content: await readFile(assertInside(wt, query.get('path') ?? ''), 'utf8') }),
 };
 
