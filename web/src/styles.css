@@ -81,11 +81,8 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .commit-detail .meta { color: var(--dim); font-size: 12px; }
 .commit-detail-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 
-.group { padding: 2px 8px; font-weight: 600; cursor: pointer; }
+.row.group { padding: 2px 8px; font-weight: 600; cursor: pointer; }
 .group .count { color: var(--dim); font-weight: normal; }
-.dir { padding: 1px 8px 1px 20px; color: var(--dim); white-space: nowrap; }
-.row.file { padding-left: 20px; }
-.row.file.indented { padding-left: 36px; }
 .status { font: 11px 'JetBrains Mono', Menlo, monospace; width: 12px; }
 .s-A { color: var(--added); } .s-M { color: var(--modified); } .s-D { color: var(--deleted); } .s-R { color: var(--renamed); }
 .status { font-weight: 600; }
@@ -231,3 +228,8 @@ button.primary:hover { background: #1c8139; }
 .commit-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
 .commit-detail-who { user-select: text; word-break: break-all; }
 .commit-detail pre, .commit-detail .meta { user-select: text; }
+
+/* 변경 파일 트리 */
+.row.dir { color: var(--dim); cursor: pointer; }
+.twisty { display: inline-block; width: 10px; color: var(--dim); font-size: 10px; }
+.panel-actions { display: flex; gap: 2px; }

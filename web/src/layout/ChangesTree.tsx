@@ -4,18 +4,59 @@ import { getChanges } from '../api.ts';
 import { copyText, useContextMenu } from '../contextMenu.tsx';
 import { useFeedback } from '../feedback/storage.ts';
 import { commitsSource, useStore } from '../store.ts';
+import { buildChangeTree, collectDirPaths, type DirNode } from './changeTree.ts';
 
 const POLL_MS = 3000;
 
 interface Group { title: string; source: Source; changes: Change[] }
 
-function groupByDir(changes: Change[]): [string, Change[]][] {
-  const map = new Map<string, Change[]>();
-  for (const c of changes) {
-    const dir = c.path.includes('/') ? c.path.slice(0, c.path.lastIndexOf('/')) : '';
-    map.set(dir, [...(map.get(dir) ?? []), c]);
-  }
-  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+const INDENT_PX = 14;
+const BASE_PX = 8;
+const keyOf = (group: string, path: string) => `${group}|${path}`;
+
+interface TreeProps {
+  group: Group;
+  node: DirNode;
+  depth: number;
+  collapsed: Set<string>;
+  toggle: (key: string) => void;
+  onOpen: (source: Source, c: Change) => void;
+  onMenu: (source: Source, c: Change, e: React.MouseEvent) => void;
+}
+
+// 디렉터리 하나와 그 아래(접힌 디렉터리는 내용을 그리지 않는다)
+function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: TreeProps) {
+  const pad = (d: number) => ({ paddingLeft: BASE_PX + d * INDENT_PX });
+  return (
+    <>
+      {node.dirs.map((d) => {
+        const key = keyOf(group.title, d.path);
+        const isCollapsed = collapsed.has(key);
+        return (
+          <div key={d.path}>
+            <div className="row dir" style={pad(depth)} onClick={() => toggle(key)} title={d.path}>
+              <span className="twisty">{isCollapsed ? '▸' : '▾'}</span>
+              <span className="name">📁 {d.name}</span>
+            </div>
+            {!isCollapsed && <DirChildren group={group} node={d} depth={depth + 1} collapsed={collapsed} toggle={toggle} onOpen={onOpen} onMenu={onMenu} />}
+          </div>
+        );
+      })}
+      {node.files.map((c) => (
+        <div
+          key={c.path}
+          className={`row file s-${c.status}`}
+          style={pad(depth + 1)}
+          onClick={() => onOpen(group.source, c)}
+          onContextMenu={(e) => onMenu(group.source, c, e)}
+          title={c.oldPath ? `${c.oldPath} → ${c.path}` : c.path}
+        >
+          <span className="status">{c.status}</span>
+          <span className="name">{c.path.slice(c.path.lastIndexOf('/') + 1)}</span>
+        </div>
+      ))}
+    </>
+  );
 }
 
 export function ChangesTree() {
@@ -34,6 +75,18 @@ export function ChangesTree() {
   };
   const [groups, setGroups] = useState<Group[]>([]);
   const lastJson = useRef('');
+  // 접힌 그룹·디렉터리(키: '그룹|경로'). 새로고침돼도 경로가 같으면 유지된다.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const trees = useMemo(() => groups.map((g) => ({ group: g, tree: buildChangeTree(g.changes) })), [groups]);
+  const toggle = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const collapseAll = () => setCollapsed(new Set(trees.flatMap(({ group, tree }) => collectDirPaths(tree).map((p) => keyOf(group.title, p)))));
+  const expandAll = () => setCollapsed(new Set());
 
   const sources = useMemo<{ title: string; source: Source }[]>(() => {
     if (selection.mode === 'worktree') {
@@ -73,33 +126,38 @@ export function ChangesTree() {
 
   return (
     <div className="changes-tree">
-      <div className="panel-title">Changes</div>
+      <div className="panel-title panel-title-row">
+        <span>Changes</span>
+        <span className="panel-actions">
+          <button className="icon-button small" title="모두 접기" aria-label="모두 접기" onClick={collapseAll}>
+            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+              <path fill="currentColor" d="M10.896 2H8.75V.75a.75.75 0 0 0-1.5 0V2H5.104a.25.25 0 0 0-.177.427l2.896 2.896a.25.25 0 0 0 .354 0l2.896-2.896A.25.25 0 0 0 10.896 2ZM8.75 15.25a.75.75 0 0 1-1.5 0V14H5.104a.25.25 0 0 1-.177-.427l2.896-2.896a.25.25 0 0 1 .354 0l2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25Zm-6.5-6.5a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
+            </svg>
+          </button>
+          <button className="icon-button small" title="모두 열기" aria-label="모두 열기" onClick={expandAll}>
+            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+              <path fill="currentColor" d="m8.177.677 2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25a.75.75 0 0 1-1.5 0V4H5.104a.25.25 0 0 1-.177-.427L7.823.677a.25.25 0 0 1 .354 0ZM7.25 10.75a.75.75 0 0 1 1.5 0V12h2.146a.25.25 0 0 1 .177.427l-2.896 2.896a.25.25 0 0 1-.354 0l-2.896-2.896A.25.25 0 0 1 5.104 12H7.25v-1.25Zm-5-2a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
+            </svg>
+          </button>
+        </span>
+      </div>
       <div className="list">
-        {groups.map((g) => (
-          <details key={g.title} open>
-            <summary className="group">
-              {g.title} <span className="count">{g.changes.length}</span>
-            </summary>
-            {groupByDir(g.changes).map(([dir, changes]) => (
-              <div key={dir}>
-                {dir && <div className="dir">📁 {dir}</div>}
-                {changes.map((c) => (
-                  <div
-                    key={c.path}
-                    className={`row file s-${c.status} ${dir ? 'indented' : ''}`}
-                    onClick={() => openDiff(g.source, c)}
-                    onContextMenu={(e) => openFileMenu(g.source, c, e)}
-                    title={c.oldPath ? `${c.oldPath} → ${c.path}` : c.path}
-                  >
-                    <span className="status">{c.status}</span>
-                    <span className="name">{c.path.slice(dir ? dir.length + 1 : 0)}</span>
-                  </div>
-                ))}
+        {trees.map(({ group: g, tree }) => {
+          const groupKey = keyOf(g.title, '');
+          const groupCollapsed = collapsed.has(groupKey);
+          return (
+            <div key={g.title}>
+              <div className="row group" onClick={() => toggle(groupKey)}>
+                <span className="twisty">{groupCollapsed ? '▸' : '▾'}</span>
+                {g.title} <span className="count">{g.changes.length}</span>
               </div>
-            ))}
-            {g.changes.length === 0 && <div className="empty">변경 없음</div>}
-          </details>
-        ))}
+              {!groupCollapsed && (
+                <DirChildren group={g} node={tree} depth={0} collapsed={collapsed} toggle={toggle} onOpen={openDiff} onMenu={openFileMenu} />
+              )}
+              {!groupCollapsed && g.changes.length === 0 && <div className="empty">변경 없음</div>}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
