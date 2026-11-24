@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Terminal } from '../../../server/shared/types.ts';
 import { getBranches, getChanges, getOrca, getTerminals, send, WT } from '../api.ts';
 import { useStore } from '../store.ts';
+import { appendBlock } from './appendBlock.ts';
 import { formatFeedback } from './format.ts';
 import type { ReviewComment } from './model.ts';
 import { loadTarget, saveTarget, useFeedback } from './storage.ts';
@@ -149,6 +150,7 @@ export function FeedbackPanel() {
 export function CommentDialog() {
   const { dialog, closeDialog, add, update } = useFeedback();
   const [body, setBody] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => setBody(dialog?.body ?? ''), [dialog]);
   if (!dialog) return null;
   const t = dialog.target;
@@ -165,6 +167,7 @@ export function CommentDialog() {
       <div className="dialog" onMouseDown={(e) => e.stopPropagation()}>
         <div className="comment-label">{title} 코멘트 (Cmd+Enter 저장, Esc 취소)</div>
         <textarea
+          ref={textareaRef}
           autoFocus
           className="comment-input"
           value={body}
@@ -175,6 +178,26 @@ export function CommentDialog() {
           }}
         />
         <div className="comment-actions">
+          {dialog.commitMessage && (
+            <button
+              className="align-left"
+              title="커밋 제목과 본문 전체를 입력 내용 뒤에 붙입니다"
+              onClick={() => {
+                const next = appendBlock(body, dialog.commitMessage!);
+                setBody(next);
+                // 붙인 뒤 커서를 끝으로 옮겨 이어서 쓸 수 있게
+                requestAnimationFrame(() => {
+                  const el = textareaRef.current;
+                  if (!el) return;
+                  el.focus();
+                  el.setSelectionRange(next.length, next.length);
+                  el.scrollTop = el.scrollHeight;
+                });
+              }}
+            >
+              커밋 메시지 붙여넣기
+            </button>
+          )}
           <button className="primary" onClick={save}>저장</button>
           <button onClick={closeDialog}>취소</button>
         </div>

@@ -60,12 +60,13 @@ export async function preloadComments(): Promise<void> {
 interface FeedbackState {
   comments: ReviewComment[];
   // 파일·커밋 코멘트 입력 대화상자(라인 코멘트는 에디터 안에서 입력)
-  dialog: { target: CommentTarget; editId?: string; body: string } | null;
+  // commitMessage: 커밋 코멘트 창의 '커밋 메시지 붙여넣기'에 쓸 전체 메시지
+  dialog: { target: CommentTarget; editId?: string; body: string; commitMessage?: string } | null;
   add(target: CommentTarget, body: string): void;
   update(id: string, patch: Partial<Pick<ReviewComment, 'body' | 'target' | 'stale'>>): void;
   remove(id: string): void;
   markSent(ids: string[]): void;
-  openDialog(target: CommentTarget, editId?: string, body?: string): void;
+  openDialog(target: CommentTarget, editId?: string, body?: string, commitMessage?: string): void;
   closeDialog(): void;
 }
 
@@ -82,7 +83,7 @@ export const useFeedback = create<FeedbackState>((set, get) => {
     update: (id, patch) => commit(get().comments.map((c) => (c.id === id ? { ...c, ...patch } : c))),
     remove: (id) => commit(get().comments.filter((c) => c.id !== id)),
     markSent: (ids) => commit(get().comments.map((c) => (ids.includes(c.id) ? { ...c, sentAt: Date.now() } : c))),
-    openDialog: (target, editId, body = '') => set({ dialog: { target, editId, body } }),
+    openDialog: (target, editId, body = '', commitMessage) => set({ dialog: { target, editId, body, commitMessage } }),
     closeDialog: () => set({ dialog: null }),
   };
 });

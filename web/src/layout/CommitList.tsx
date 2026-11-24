@@ -19,13 +19,19 @@ export function relativeTime(epochSec: number): string {
   return '방금 전';
 }
 
+const fullMessage = (c: Commit) => (c.body ? `${c.subject}\n\n${c.body}` : c.subject);
+
+function openCommitDialog(c: Commit) {
+  useFeedback.getState().openDialog({ kind: 'commit', sha: c.sha, subject: c.subject }, undefined, '', fullMessage(c));
+}
+
 function openCommitMenu(c: Commit, e: React.MouseEvent) {
   e.preventDefault();
   useContextMenu.getState().open(e.clientX, e.clientY, [
-    { label: '커밋에 코멘트', onSelect: () => useFeedback.getState().openDialog({ kind: 'commit', sha: c.sha, subject: c.subject }) },
+    { label: '커밋에 코멘트', onSelect: () => openCommitDialog(c) },
     'separator',
     { label: '해시 복사', onSelect: () => copyText(c.sha, '해시') },
-    { label: '메시지 복사', onSelect: () => copyText(c.body ? `${c.subject}\n\n${c.body}` : c.subject, '메시지') },
+    { label: '메시지 복사', onSelect: () => copyText(fullMessage(c), '메시지') },
   ]);
 }
 
@@ -168,7 +174,7 @@ export function CommitList() {
           <pre>{detail.subject}{detail.body ? `\n\n${detail.body}` : ''}</pre>
           <div className="commit-detail-footer">
             <span className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</span>
-            <button onClick={() => useFeedback.getState().openDialog({ kind: 'commit', sha: detail.sha, subject: detail.subject })}>
+            <button onClick={() => openCommitDialog(detail)}>
               💬 커밋에 코멘트
             </button>
           </div>

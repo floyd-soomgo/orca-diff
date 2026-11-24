@@ -216,3 +216,4 @@ button.primary:hover { background: #1c8139; }
 .icon-button.small { width: 20px; height: 20px; border: none; background: none; font-size: 14px; }
 .icon-button.small:hover { background: var(--hover); }
 .icon-button.small.active { color: var(--accent); }
+.comment-actions .align-left { margin-right: auto; }
