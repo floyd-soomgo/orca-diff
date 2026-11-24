@@ -20,6 +20,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, query: Record<st
 export interface Branches { current: string | null; local: string[]; remote: string[]; base: string | null }
 export type NavQuery = { path: string; line: number; column: number; content?: string };
 
+export const getWorktreeFiles = () => request<string[]>('GET', '/api/worktree-files');
 export const getWorktrees = () => request<{ path: string; branch: string | null }[]>('GET', '/api/worktrees');
 export const getBranches = () => request<Branches>('GET', '/api/branches');
 export const getCommits = (q: { ref: string; base: string | null; skip: number; limit: number }) =>

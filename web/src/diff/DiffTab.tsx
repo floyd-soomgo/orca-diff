@@ -1,3 +1,6 @@
+import { markdownChanges } from './markdownChanges.ts';
+import { MarkdownPage } from './MarkdownPage.tsx';
+import { rememberView } from './rememberView.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { create } from 'zustand';
 import type { Change, FilePair, Source } from '../../../server/shared/types.ts';
@@ -104,7 +107,14 @@ export function DiffTab({ source, change, attach }: Props) {
   const canAttach = !view.formatted;
 
   // 에디터 생성
-  const showEditor = pair !== null && !pair.binary && !pair.tooLarge;
+  const isSvg = /\.svg$/i.test(change.path);
+  const [svgSource, setSvgSource] = useState(false);
+  const preview = pair && !pair.tooLarge && (pair.image || (isSvg && !pair.binary && !svgSource));
+  const [renderMarkdown, setRenderMarkdown] = useState(false);
+  const isMarkdown = /\.(md|markdown)$/i.test(change.path) && pair && !pair.tooLarge && !pair.binary;
+  const markdownPreview = isMarkdown && renderMarkdown;
+  const mdChanges = useMemo(() => markdownPreview && !single ? markdownChanges(pair.original, pair.modified) : undefined, [markdownPreview, single, pair]);
+  const showEditor = !markdownPreview && !preview && pair !== null && !pair.binary && !pair.tooLarge;
   useEffect(() => {
     if (!showEditor || !host.current || !single) return;
     const editor = monaco.editor.create(host.current, {
@@ -198,6 +208,12 @@ export function DiffTab({ source, change, attach }: Props) {
     editorRef.current?.updateOptions({ renderSideBySide: sideBySide, hideUnchangedRegions: { enabled: hunksOnly } });
   }, [sideBySide, hunksOnly, showEditor]);
 
+  useEffect(() => {
+    const id = JSON.stringify([source, change.path, single]);
+    if (singleRef.current) return rememberView(id, singleRef.current);
+    if (editorRef.current) return rememberView(id, editorRef.current);
+  }, [showEditor, source, change.path, single]);
+
   return (
     <div className="diff-tab">
       <div className="diff-toolbar">
@@ -205,13 +221,15 @@ export function DiffTab({ source, change, attach }: Props) {
           {change.oldPath ? `${change.oldPath} → ` : ''}
           {change.path}
         </span>
+        {isMarkdown && <button onClick={() => setRenderMarkdown(!renderMarkdown)}>{renderMarkdown ? '원문 보기' : '렌더 보기'}</button>}
+        {isSvg && pair && !pair.tooLarge && !pair.binary && <button onClick={() => setSvgSource(!svgSource)}>{svgSource ? '렌더 결과 보기' : 'SVG 코드 보기'}</button>}
         {isJson && !pair?.tooLarge && !pair?.binary && (
           <button className={`toggle-single ${formatJsonOn ? 'active' : ''}`} title="JSON을 들여쓰기로 정리해서 비교" onClick={() => set({ formatJson: !formatJsonOn })}>
             JSON 포맷
           </button>
         )}
         {single && <span className={`file-badge ${single}`}>{single === 'new' ? '새 파일' : '삭제된 파일'}</span>}
-        {!single && !pair?.tooLarge && (
+        {!markdownPreview && !preview && !single && !pair?.tooLarge && (
         <>
         <div className="toggle">
           <button className={sideBySide ? 'active' : ''} onClick={() => set({ sideBySide: true })}>Split</button>
@@ -226,8 +244,21 @@ export function DiffTab({ source, change, attach }: Props) {
       </div>
       {view.formatted && <div className="patch-notice">JSON 포맷 보기입니다. 줄 번호가 실제 파일과 달라서 라인 코멘트와 우클릭 메뉴를 쓸 수 없습니다(파일 전체 코멘트는 탭의 💬).</div>}
       {view.failed && <div className="patch-notice">JSON 형식이 아니어서 원문 그대로 보여줍니다.</div>}
-      {pair?.binary && <div className="editor-empty">바이너리 파일은 diff를 표시하지 않습니다</div>}
-      {pair?.tooLarge && <PatchView source={source} change={change} />}
+      {markdownPreview && <div className="markdown-pages">
+        {single !== 'new' && <MarkdownPage label="변경 전" changes={mdChanges?.original} text={pair.original} />}
+        {single !== 'old' && <MarkdownPage label="변경 후" changes={mdChanges?.modified} text={pair.modified} />}
+      </div>}
+      {preview && <div className="image-diff">
+        {(['original', 'modified'] as const).map(side => {
+          if ((side === 'original' && single === 'new') || (side === 'modified' && single === 'old')) return null;
+          const label = side === 'original' ? '변경 전' : '변경 후';
+          const src = pair.image ? pair[side] : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pair[side]);
+          return <figure key={side}><figcaption>{label}</figcaption><img src={src} alt={label + ' ' + change.path} /></figure>;
+        })}
+      </div>}
+      {pair?.image && pair.tooLarge && <div className="editor-empty">12 MiB를 넘는 이미지는 미리볼 수 없습니다.</div>}
+      {pair?.binary && !pair.image && <div className="editor-empty">바이너리 파일은 diff를 표시하지 않습니다</div>}
+      {pair?.tooLarge && !pair.image && <PatchView source={source} change={change} />}
       {!pair && <div className="editor-empty">불러오는 중…</div>}
       <div ref={host} className="monaco-host" style={{ display: showEditor ? 'block' : 'none' }} />
     </div>

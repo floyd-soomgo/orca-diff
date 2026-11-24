@@ -3,20 +3,29 @@ import { create } from 'zustand';
 import type { Location } from '../../../server/shared/types.ts';
 import { getDefinition, getReferences, type NavQuery } from '../api.ts';
 import { monaco } from '../monaco/setup.ts';
+import { getPref, setPref } from '../prefs.ts';
 import { withLoading } from './loading.ts';
 import { navKeyAction } from './navKeys.ts';
 import { type NavEntry, useStore } from '../store.ts';
 
 export const TS_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
 
-export interface UsagesPopupState { x: number; y: number; title: string; locations: Location[] }
+export interface UsagesPopupState { references?: boolean; x: number; y: number; title: string; locations: Location[] }
 
 export const useNavUi = create<{
+  hideImports: boolean;
+  toggleImports(): void;
   popup: UsagesPopupState | null;
   usages: { title: string; locations: Location[] } | null;
   setPopup(p: UsagesPopupState | null): void;
   setUsages(u: { title: string; locations: Location[] } | null): void;
 }>((set) => ({
+  hideImports: getPref('hideImports', true),
+  toggleImports: () => set(s => {
+    const hideImports = !s.hideImports;
+    setPref('hideImports', hideImports);
+    return { hideImports };
+  }),
   popup: null,
   usages: null,
   setPopup: (popup) => set({ popup }),
@@ -90,8 +99,8 @@ export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavCont
       if (onDeclaration) {
         const refs = await withLoading('사용처 찾는 중', () => getReferences(query(pos)));
         if (refs.length === 0) toast('사용처가 없습니다');
-        else if (refs.length === 1) jumpTo(refs[0]);
-        else setPopup({ ...popupAt(pos), title: `${wordLabel(pos)} 사용처 ${refs.length}건`, locations: refs });
+        else if (refs.length === 1 && !(useNavUi.getState().hideImports && refs[0].isImport)) jumpTo(refs[0]);
+        else setPopup({ ...popupAt(pos), references: true, title: wordLabel(pos), locations: refs });
         return;
       }
       if (locations.length === 1) jumpTo(locations[0]);

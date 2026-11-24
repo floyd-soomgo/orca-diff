@@ -29,7 +29,7 @@ async function ensureServer(key: string): Promise<void> {
   throw new Error(`서버가 시작되지 않았습니다. ${join(CONFIG_DIR, 'server.log')}를 확인하세요 (포트 ${PORT}).`);
 }
 
-// 이 워크트리에 이미 열린 orca-review 탭이 있으면 그 탭의 페이지 id
+// 이 워크트리에 이미 열린 orca-diff 탭이 있으면 그 탭의 페이지 id
 async function findExistingTab(wt: string): Promise<{ page: string; url: string } | null> {
   try {
     const out = JSON.parse((await exec('orca', ['tab', 'list', '--worktree', `path:${wt}`, '--json'])).stdout);

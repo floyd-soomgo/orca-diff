@@ -28,6 +28,7 @@ describe('navigation', () => {
 
   test('선언 위치에서 사용처를 찾는다(선언 제외)', async () => {
     const locs = await references(fx.dir, { path: 'util.ts', line: 1, column: 17 });
+    expect(locs.filter(l => l.isImport).map(l => l.line)).toEqual([1]);
     expect(locs.map((l) => `${l.path}:${l.line}`).sort()).toEqual(['main.ts:1', 'main.ts:3']);
   });
 

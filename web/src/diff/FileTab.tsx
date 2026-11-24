@@ -1,8 +1,13 @@
+import { MarkdownPage } from './MarkdownPage.tsx';
+import { rememberView } from './rememberView.ts';
 import { useEffect, useRef, useState } from 'react';
-import { getFile } from '../api.ts';
+import type { Change } from "../../../server/shared/types.ts";
+import { getChanges, getFile } from '../api.ts';
 import { languageOf, monaco, READONLY_OPTIONS } from '../monaco/setup.ts';
 import { editorFontOptions, useFontSettings } from '../settings/fontSettings.ts';
 import { useStore } from '../store.ts';
+
+const statusLabel = { A: '새 파일', M: '수정', D: '삭제', R: '이름 변경' } as const;
 
 interface Props {
   path: string;
@@ -17,6 +22,25 @@ export function FileTab({ path, reveal, attach }: Props) {
   const refreshTick = useStore((s) => s.refreshTick);
   const toast = useStore((s) => s.toast);
   const font = useFontSettings();
+
+  const active = useStore(s => s.activeTabId === 'file:' + path);
+  const openDiff = useStore(s => s.openDiff);
+  const [changes, setChanges] = useState<{ kind: 'staged' | 'unstaged'; change: Change }[]>([]);
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    const load = async () => {
+      const groups = await Promise.all((['staged', 'unstaged'] as const).map(async kind => {
+        const change = (await getChanges({ kind })).find(c => c.path === path);
+        return change ? [{ kind, change }] : [];
+      }));
+      if (!cancelled) setChanges(groups.flat());
+    };
+    const refresh = () => load().catch(e => { if (!cancelled) toast(e.message, 'error'); });
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => { cancelled = true; window.removeEventListener('focus', refresh); };
+  }, [active, path, refreshTick, toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,13 +98,34 @@ export function FileTab({ path, reveal, attach }: Props) {
     };
   }, [reveal, content]);
 
+  const [renderMarkdown, setRenderMarkdown] = useState(false);
+  const ready = content !== null;
+  useEffect(() => {
+    if (ready && editorRef.current) return rememberView('file:' + path, editorRef.current);
+  }, [ready, path]);
+
   return (
     <div className="diff-tab">
       <div className="diff-toolbar">
         <span className="path">{path}</span>
+        {changes.map(({ kind, change }) => {
+          const staged = kind === 'staged';
+          const tip = staged
+            ? '다음 커밋에 포함할 변경입니다. 클릭하면 마지막 커밋과 스테이징한 내용을 비교합니다.'
+            : change.status === 'A'
+              ? '아직 git add 하지 않은 새 파일입니다. 클릭하면 추가된 내용을 봅니다.'
+              : '아직 스테이징하지 않은 변경입니다. 클릭하면 스테이징 영역과 현재 파일을 비교합니다.';
+          return (
+            <button key={kind} data-tip={tip} aria-description={tip} onClick={() => openDiff({ kind }, change)}>
+              {statusLabel[change.status]} · {staged ? '스테이징됨' : '스테이징 전'}
+            </button>
+          );
+        })}
+        {/\.(md|markdown)$/i.test(path) && <button onClick={() => setRenderMarkdown(!renderMarkdown)}>{renderMarkdown ? '원문 보기' : '렌더 보기'}</button>}
         <span className="readonly">읽기 전용</span>
       </div>
-      <div ref={host} className="monaco-host" />
+      {renderMarkdown && content !== null && <div className="markdown-pages"><MarkdownPage text={content} /></div>}
+      <div ref={host} className="monaco-host" style={{ display: renderMarkdown ? 'none' : 'block' }} />
     </div>
   );
 }

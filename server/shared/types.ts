@@ -23,6 +23,7 @@ export interface Commit {
 }
 
 export interface FilePair {
+  image?: boolean;
   original: string;
   modified: string;
   tooLarge: boolean;
@@ -30,6 +31,7 @@ export interface FilePair {
 }
 
 export interface Location {
+  isImport?: boolean;
   path: string; // 워크트리 기준 상대 경로
   line: number;
   column: number;

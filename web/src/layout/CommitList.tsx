@@ -132,6 +132,8 @@ export function CommitList() {
           <span className="panel-actions">
           <button
             className={`chip ${baseOnly && base && branch !== base ? 'active' : ''}`}
+            aria-label="이 브랜치만"
+            aria-pressed={Boolean(baseOnly && base && branch !== base)}
             disabled={!base || branch === base}
             title={
               base
@@ -140,7 +142,12 @@ export function CommitList() {
             }
             onClick={() => setBaseOnly(!baseOnly)}
           >
-            이 브랜치만
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="4" cy="3" r="1.6" />
+              <circle cx="4" cy="13" r="1.6" />
+              <circle cx="12" cy="4" r="1.6" />
+              <path d="M4 4.6v6.8m0-.4c0-4 8-1 8-5.4" />
+            </svg>
           </button>
           <button
             className={`icon-button small ${filter ? 'active' : ''}`}

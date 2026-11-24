@@ -8,7 +8,7 @@ const MAX_SIZE = 24;
 
 // 흔히 쓰는 고정폭 글꼴 후보. 실제로 설치된 것만 목록에 보여준다.
 const CANDIDATES = [
-  'JetBrains Mono', 'Fira Code', 'Fira Mono', 'SF Mono', 'Menlo', 'Monaco', 'D2Coding', 'Source Code Pro',
+  'JetBrains Mono', 'Jetendard', 'Fira Code', 'Fira Mono', 'SF Mono', 'Menlo', 'Monaco', 'D2Coding', 'Source Code Pro',
   'Cascadia Code', 'Hack', 'IBM Plex Mono', 'Roboto Mono', 'Ubuntu Mono', 'Consolas', 'Courier New',
 ];
 

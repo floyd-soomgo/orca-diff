@@ -1,10 +1,12 @@
-import { readFile } from 'node:fs/promises';
-import { isAbsolute, join, normalize, sep } from 'node:path';
+import { lstat, readFile, realpath } from 'node:fs/promises';
+import { extname, isAbsolute, join, normalize, sep } from 'node:path';
 import type { Change, ChangeStatus, FilePair, Source } from '../shared/types.ts';
-import { git, gitOrNull } from './run.ts';
+import { git, gitBytes, gitOrNull } from './run.ts';
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 const MAX_BYTES = 1024 * 1024;
+
+const imageTypes = new Map(Object.entries({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif', '.bmp': 'image/bmp', '.ico': 'image/x-icon' }));
 
 export class BadRequest extends Error {}
 
@@ -104,6 +106,28 @@ async function readBlob(wt: string, spec: string): Promise<string> {
 }
 
 export async function readFilePair(wt: string, source: Source, change: Change): Promise<FilePair> {
+  const mime = imageTypes.get(extname(change.path).toLowerCase());
+  if (mime) {
+    const limit = 12 * MAX_BYTES;
+    const read = async (spec: string | null) => {
+      if (spec !== null) {
+        if (Number(await git(wt, ['cat-file', '-s', spec])) > limit) return null;
+        return gitBytes(wt, ['cat-file', 'blob', spec], { maxBuffer: limit });
+      }
+      const path = assertInside(wt, change.path);
+      if (!(await realpath(path)).startsWith((await realpath(wt)) + sep)) throw new BadRequest('워크트리 밖 이미지입니다');
+      const stat = await lstat(path);
+      if (!stat.isFile()) throw new BadRequest('일반 이미지 파일만 표시합니다');
+      return stat.size > limit ? null : readFile(path);
+    };
+    const oldPath = change.oldPath ?? change.path;
+    const original = change.status === 'A' ? undefined : await read(source.kind === 'commits'
+      ? `${await parentOf(wt, source.from)}:${oldPath}` : source.kind === 'staged' ? `HEAD:${oldPath}` : `:${oldPath}`);
+    const modified = change.status === 'D' ? undefined : await read(source.kind === 'unstaged'
+      ? null : source.kind === 'staged' ? `:${change.path}` : `${source.to}:${change.path}`);
+    const url = (bytes: Buffer | null | undefined) => bytes ? `data:${mime};base64,${bytes.toString('base64')}` : '';
+    return { original: url(original), modified: url(modified), image: true, tooLarge: original === null || modified === null, binary: true };
+  }
   if (change.binary) return { original: '', modified: '', tooLarge: false, binary: true };
   const oldPath = change.oldPath ?? change.path;
   const hasOriginal = change.status !== 'A';

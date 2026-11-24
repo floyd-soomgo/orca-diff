@@ -85,8 +85,21 @@ export function ChangesTree() {
   const [groups, setGroups] = useState<Group[]>([]);
   const lastJson = useRef('');
   // 접힌 그룹·디렉터리(키: '그룹|경로'). 새로고침돼도 경로가 같으면 유지된다.
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const trees = useMemo(() => groups.map((g) => ({ group: g, tree: buildChangeTree(g.changes) })), [groups]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filter, setFilter] = useState('');
+  const query = filter.trim().toLowerCase();
+  const [normalCollapsed, setNormalCollapsed] = useState<Set<string>>(new Set());
+  const [searchCollapsed, setSearchCollapsed] = useState<Set<string>>(new Set());
+  const collapsed = query ? searchCollapsed : normalCollapsed;
+  const setCollapsed = query ? setSearchCollapsed : setNormalCollapsed;
+  const trees = useMemo(() => groups.map((group) => {
+    const changes = group.changes.filter(({ path }) => {
+      const name = path.slice(path.lastIndexOf('/') + 1).toLowerCase();
+      if (query.startsWith('*.')) return name.endsWith(query.slice(1));
+      return query.startsWith('.') ? name.endsWith(query) : name.includes(query);
+    });
+    return { group: { ...group, changes }, tree: buildChangeTree(changes) };
+  }), [groups, query]);
   const toggle = (key: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -135,6 +148,33 @@ export function ChangesTree() {
 
   return (
     <div className="changes-tree">
+      {searchOpen ? (
+        <div className="panel-title panel-search">
+          <input
+            autoFocus
+            aria-label="변경 파일 필터" placeholder="파일명 또는 확장자 (예: .svg)"
+            value={filter}
+            onChange={(e) => { setFilter(e.target.value); setSearchCollapsed(new Set()); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setFilter('');
+                setSearchOpen(false);
+              }
+            }}
+          />
+          <button
+            className="icon-button small"
+            title="필터 닫기 (Esc)"
+            aria-label="필터 닫기"
+            onClick={() => {
+              setFilter('');
+              setSearchOpen(false);
+            }}
+          >
+            ×
+          </button>
+        </div>
+      ) : (
       <div className="panel-title panel-title-row">
         <span>Changes</span>
         <span className="panel-actions">
@@ -148,8 +188,22 @@ export function ChangesTree() {
               <path fill="currentColor" d="m8.177.677 2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25a.75.75 0 0 1-1.5 0V4H5.104a.25.25 0 0 1-.177-.427L7.823.677a.25.25 0 0 1 .354 0ZM7.25 10.75a.75.75 0 0 1 1.5 0V12h2.146a.25.25 0 0 1 .177.427l-2.896 2.896a.25.25 0 0 1-.354 0l-2.896-2.896A.25.25 0 0 1 5.104 12H7.25v-1.25Zm-5-2a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
             </svg>
           </button>
+          <button
+            className={`icon-button small ${filter ? 'active' : ''}`}
+            title="변경 파일 필터"
+            aria-label="변경 파일 필터"
+            onClick={() => setSearchOpen(true)}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"
+              />
+            </svg>
+          </button>
         </span>
       </div>
+      )}
       <div className="list">
         {trees.map(({ group: g, tree }) => {
           const groupKey = keyOf(g.title, '');
@@ -163,7 +217,7 @@ export function ChangesTree() {
               {!groupCollapsed && (
                 <DirChildren group={g} node={tree} depth={0} collapsed={collapsed} toggle={toggle} onOpen={openDiff} onMenu={openFileMenu} />
               )}
-              {!groupCollapsed && g.changes.length === 0 && <div className="empty">변경 없음</div>}
+              {!groupCollapsed && g.changes.length === 0 && <div className="empty">{query ? "일치하는 파일 없음" : "변경 없음"}</div>}
             </div>
           );
         })}

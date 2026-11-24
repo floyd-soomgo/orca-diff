@@ -73,6 +73,15 @@ function parseNavQuery(body: unknown): NavQuery {
 }
 
 const coreRoutes: Routes = {
+  'GET /api/worktree-files': async ({ wt }) => {
+    const [files, deleted] = await Promise.all([
+      git(wt, ['ls-files', '--cached', '--others', '--exclude-standard', '-z']),
+      git(wt, ['ls-files', '--deleted', '-z']),
+    ]);
+    const paths = new Set(files.split('\0'));
+    for (const path of deleted.split('\0')) paths.delete(path);
+    return [...paths];
+  },
   'GET /api/worktrees': ({ wt }) => listWorktrees(wt),
   'GET /api/branches': async ({ wt }) => ({ ...(await listBranches(wt)), base: await resolveBaseRef(wt) }),
   'GET /api/commits': ({ wt, query }) => {

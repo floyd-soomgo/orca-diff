@@ -17,5 +17,5 @@ const server = createApp({
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`orca-review 서버: http://127.0.0.1:${PORT}`);
+  console.log(`orca-diff 서버: http://127.0.0.1:${PORT}`);
 });

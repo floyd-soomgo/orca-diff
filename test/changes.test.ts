@@ -66,6 +66,18 @@ describe('listChanges', () => {
 });
 
 describe('readFilePair', () => {
+  test('스테이징한 이미지와 작업 파일의 바이트를 따로 보존한다', async () => {
+    const fx = await gitFixture();
+    const { writeFile } = await import('node:fs/promises');
+    const path = fx.dir + '/icon.png';
+    await writeFile(path, Buffer.from([137, 80, 78, 71, 0, 255]));
+    await fx.run(['add', 'icon.png']);
+    await writeFile(path, Buffer.from([137, 80, 78, 71, 0, 254]));
+    const pair = await readFilePair(fx.dir, { kind: 'unstaged' }, { path: 'icon.png', status: 'M', binary: true });
+    expect(pair.original).toBe('data:image/png;base64,iVBORwD/');
+    expect(pair.modified).toBe('data:image/png;base64,iVBORwD+');
+  });
+
   test('삭제·추가·이름변경 커밋의 양쪽 내용', async () => {
     const fx = await gitFixture();
     const body = 'export const value = 1;\n'.repeat(20);

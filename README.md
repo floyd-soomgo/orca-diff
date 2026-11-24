@@ -1,33 +1,46 @@
-# orca-review
+# orca-diff
 
 에이전트가 만든 결과물을 검토하는 로컬 git 리뷰 도구입니다. WebStorm 내장 git 클라이언트처럼 커밋과 워킹트리 diff를 보고, TS/JS 코드를 탐색하고, 라인·파일·커밋 단위 피드백을 에이전트 입력창에 넣을 수 있습니다. 읽기 전용이라 git에 아무것도 쓰지 않습니다.
 
 ## 설치
 
-```bash
-npm i
-npm run build
-npm link        # orca-review 명령 등록
-```
+Node.js 22.18 이상이 설치된 Mac에서 이 저장소를 복제한 뒤, 저장소 루트에서 한 번 실행하세요.
 
-Node 22.18 이상이 필요합니다(TS 파일을 빌드 없이 직접 실행).
+```bash
+npm ci && npm run build && npm link
+```
 
 ## 사용법
 
 워크트리 안에서 실행합니다.
 
 ```bash
-orca-review
+orca-diff
 ```
 
 - 로컬 서버(`127.0.0.1:4517`, `ORCA_REVIEW_PORT`로 변경)가 없으면 띄우고, 있으면 재사용합니다.
 - Orca가 있으면 그 워크트리의 Orca 브라우저 탭으로, 없으면 기본 브라우저로 엽니다. Orca 탭은 하단/측면 스플릿으로 옮길 수 있습니다.
 - 접속 키는 `~/.orca-review/key`, UI 설정(패널 크기·글꼴·diff 보기 방식, 마지막 피드백 대상)은 `~/.orca-review/prefs.json`, 리뷰 코멘트는 `~/.orca-review/comments.json`(워크트리별)에 저장되어 어느 탭·브라우저에서 열어도 같게 적용됩니다. 서버 로그는 `~/.orca-review/server.log`에 쌓입니다.
-- 코드를 업데이트한 뒤에는 `npm run build`를 다시 하고 서버를 재시작하세요(`pkill -f orca-review/server/index.ts` 후 다시 `orca-review`).
+
+기존 명령 `orca-review`도 같은 CLI를 실행합니다.
+
+## 업데이트
+
+처음 설치한 `orca-diff` 저장소에서 최신 코드를 받고 다시 빌드합니다. 같은 폴더와 Node.js 환경을 계속 쓰면 `npm link`는 처음 한 번이면 됩니다.
+
+```bash
+git pull --ff-only && npm ci && npm run build
+```
+
+빌드가 끝나면 실행 중인 리뷰 서버를 종료하고, 리뷰할 워크트리에서 `orca-diff`를 다시 실행하세요. 서버가 실행 중이지 않으면 종료 단계는 건너뜁니다.
+
+```bash
+pkill -f 'orca-diff/server/index[.]ts'
+```
 
 ## 화면
 
-- **왼쪽 위 Commits**: 맨 위 `Working tree`와 선택한 브랜치의 커밋 목록. 제목 줄의 돋보기로 메시지/작성자 필터를 엽니다(Esc로 닫기). 제목 줄의 "이 브랜치만" 칩을 켜면(기본값) 기준 브랜치 `origin/HEAD`에는 없는 커밋만 보입니다. Shift+클릭으로 범위를 선택하면 합친 diff가 나옵니다. 우클릭하면 커밋 코멘트를 달 수 있습니다.
+- **왼쪽 위 Commits**: 맨 위 `Working tree`와 선택한 브랜치의 커밋 목록. 제목 줄의 돋보기로 메시지/작성자 필터를 엽니다(Esc로 닫기). 제목 줄의 "이 브랜치만" 브랜치 아이콘을 켜면(기본값) 기준 브랜치 `origin/HEAD`에는 없는 커밋만 보입니다. Shift+클릭으로 범위를 선택하면 합친 diff가 나옵니다. 우클릭하면 커밋 코멘트를 달 수 있습니다.
 - **왼쪽 아래 Changes**: 변경 파일 트리. Working tree는 Unstaged/Staged로 나뉘고, 3초마다 다시 읽습니다.
 - **가운데 탭**: diff 탭(Split/Unified, 변경 뭉치/전체)과 읽기 전용 파일 탭이 있습니다. 탭의 💬로 파일 전체에 코멘트를 답니다.
 - **하단 도구 창**: Find Usages 결과와 Feedback 목록.
@@ -64,3 +77,7 @@ npm test          # vitest (git·HTTP·tsserver·피드백 포맷)
 npm run typecheck # 서버 + 웹
 npm run dev       # Vite 개발 서버(5173, /api는 4517로 프록시)
 ```
+
+## 라이선스
+
+[MIT](LICENSE)

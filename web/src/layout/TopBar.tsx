@@ -1,3 +1,4 @@
+import { FileFinder } from './FileFinder.tsx';
 import { useEffect, useState } from 'react';
 import { type Branches, getBranches, getWorktrees, KEY, WT } from '../api.ts';
 import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
@@ -13,7 +14,12 @@ export function TopBar() {
     getBranches()
       .then((b) => {
         setBranches(b);
-        setBranch(b.current ?? 'HEAD', b.base);
+        const saved = useStore.getState().branch;
+        if (saved && (saved === (b.current ?? 'HEAD') || b.local.includes(saved) || b.remote.includes(saved))) {
+          useStore.setState({ base: b.base });
+        } else {
+          setBranch(b.current ?? 'HEAD', b.base);
+        }
       })
       .catch((e: Error) => toast(`브랜치 목록 실패: ${e.message}`, 'error'));
   }, [setBranch, toast]);
@@ -56,6 +62,7 @@ export function TopBar() {
           />
         </svg>
       </button>
+      <FileFinder />
       <FontSettingsButton />
     </div>
   );

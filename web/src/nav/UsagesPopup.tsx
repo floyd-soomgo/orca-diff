@@ -1,24 +1,67 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { getFile } from '../api.ts';
+import { getPref, setPref } from '../prefs.ts';
 import { useStore } from '../store.ts';
 import { jumpTo, useNavUi } from './useNavigation.ts';
 
 // 커서 근처에 뜨는 선언/사용처 목록(WebStorm 팝업)
 export function UsagesPopup() {
-  const { popup, setPopup, setUsages } = useNavUi();
+  const { popup, setPopup, setUsages, hideImports, toggleImports } = useNavUi();
   const setBottomPanel = useStore((s) => s.setBottomPanel);
   const [index, setIndex] = useState(0);
 
-  useEffect(() => setIndex(0), [popup]);
+  const box = useRef<HTMLDivElement>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const locations = (popup?.locations ?? []).filter(l => !(popup?.references && hideImports && l.isImport));
+  const selectedIndex = Math.min(index, locations.length - 1);
+  const selection = locations[selectedIndex];
+  const path = selection?.path;
+  const [file, setFile] = useState<{ path: string; lines: string[] | null }>();
+  const [size, setSize] = useState(() => getPref('size.usagesPopup', { width: 760, height: 440 }));
+
+  useEffect(() => {
+    if (!path) return;
+    let active = true;
+    getFile(path).then(({ content }) => {
+      if (active) setFile({ path, lines: content.split(/\r?\n/) });
+    }).catch(() => { if (active) setFile({ path, lines: null }); });
+    return () => { active = false; };
+  }, [path]);
+
+  useEffect(() => {
+    if (!box.current || !popup) return;
+    const el = box.current;
+    let width = el.offsetWidth, height = el.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      if (width === el.offsetWidth && height === el.offsetHeight) return;
+      width = el.offsetWidth;
+      height = el.offsetHeight;
+      setSize({ width, height });
+      setPref('size.usagesPopup', { width, height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [popup]);
+
+  useEffect(() => {
+    box.current?.querySelector('.row.selected')?.scrollIntoView({ block: 'nearest' });
+  }, [popup, index]);
+
+  useEffect(() => {
+    setIndex(0);
+    setPosition(null);
+  }, [popup]);
 
   useEffect(() => {
     if (!popup) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPopup(null);
-      else if (e.key === 'ArrowDown') setIndex((i) => Math.min(i + 1, popup.locations.length - 1));
-      else if (e.key === 'ArrowUp') setIndex((i) => Math.max(i - 1, 0));
-      else if (e.key === 'Enter') {
+      else if (e.key === 'ArrowDown') setIndex((i) => Math.max(0, Math.min(i + 1, locations.length - 1)));
+      else if (e.key === 'ArrowUp') setIndex((i) => Math.max(Math.min(i, locations.length - 1) - 1, 0));
+      else if (e.key === 'Enter' && selection && !(e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement)) {
         setPopup(null);
-        jumpTo(popup.locations[index]);
+        jumpTo(selection);
       } else return;
       e.preventDefault();
       e.stopPropagation();
@@ -32,15 +75,28 @@ export function UsagesPopup() {
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('mousedown', onClickOutside);
     };
-  }, [popup, index, setPopup]);
+  }, [popup, selection, setPopup, locations.length]);
 
   if (!popup) return null;
-  const top = Math.min(popup.y, window.innerHeight - 320);
-  const left = Math.min(popup.x, window.innerWidth - 520);
+  const top = Math.min(position?.y ?? popup.y, window.innerHeight - size.height - 8);
+  const left = Math.min(position?.x ?? popup.x, window.innerWidth - size.width - 8);
   return (
-    <div className="usages-popup" style={{ top, left }}>
-      <div className="popup-title">
-        {popup.title}
+    <div className="usages-popup" ref={box} style={{ top: Math.max(8, top), left: Math.max(8, left), ...size }}>
+      <div
+        className="popup-title popup-handle"
+        onPointerDown={(e) => {
+          if (!e.isPrimary || e.button !== 0 || (e.target as HTMLElement).closest('button, label')) return;
+          const rect = box.current!.getBoundingClientRect();
+          dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+          setPosition({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+        }}
+      >
+        <span className="usages-heading">{popup.title}{popup.references && ` 사용처 ${locations.length}건`}
+        {popup.references && <label className="import-filter"><input type="checkbox" checked={hideImports} onChange={toggleImports} /> import 제외</label>}</span>
         <button
           className="link"
           onClick={() => {
@@ -53,12 +109,12 @@ export function UsagesPopup() {
         </button>
       </div>
       <div className="popup-list">
-        {popup.locations.map((l, i) => (
+        {locations.map((l, i) => (
           <div
             key={`${l.path}:${l.line}:${l.column}`}
-            className={`row ${i === index ? 'selected' : ''}`}
-            onMouseEnter={() => setIndex(i)}
-            onClick={() => {
+            className={`row ${i === selectedIndex ? 'selected' : ''}`}
+            onClick={() => setIndex(i)}
+            onDoubleClick={() => {
               setPopup(null);
               jumpTo(l);
             }}
@@ -68,6 +124,16 @@ export function UsagesPopup() {
           </div>
         ))}
       </div>
+      {selection && <div className="usage-context">
+        <div className="popup-title">{selection.path}:{selection.line}
+          <button className="link" onClick={() => { setPopup(null); jumpTo(selection); }}>파일 열기</button>
+        </div>
+        <pre>{file?.path !== selection.path ? '불러오는 중…' : !file.lines ? '파일을 읽을 수 없습니다.' :
+          file.lines.slice(Math.max(0, selection.line - 6), selection.line + 5).map((line, i) => {
+            const n = Math.max(1, selection.line - 5) + i;
+            return <div key={n} className={n === selection.line ? 'reveal-line' : ''}>{String(n).padStart(4)}  {line}</div>;
+          })}</pre>
+      </div>}
     </div>
   );
 }

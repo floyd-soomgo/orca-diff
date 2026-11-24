@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { readFile, realpath } from 'node:fs/promises';
 import { extname, relative } from 'node:path';
 import { assertInside, BadRequest } from '../git/changes.ts';
@@ -38,20 +39,27 @@ async function withOpenFile<T>(wt: string, q: NavQuery, fn: (server: TsServer, f
 
 async function toLocations(wt: string, spans: RefEntry[], override: { file: string; content?: string }): Promise<Location[]> {
   const root = await realpath(wt);
-  const cache = new Map<string, string[]>();
-  const lineOf = async (file: string, line: number) => {
-    if (!cache.has(file)) {
-      const text = file === override.file && override.content !== undefined ? override.content : await readFile(file, 'utf8').catch(() => '');
-      cache.set(file, text.split('\n'));
-    }
-    return cache.get(file)![line - 1] ?? '';
+  const cache = new Map<string, ts.SourceFile>();
+  const sourceOf = async (file: string) => {
+    const cached = cache.get(file);
+    if (cached) return cached;
+    const text = file === override.file && override.content !== undefined ? override.content : await readFile(file, 'utf8').catch(() => '');
+    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest);
+    cache.set(file, source);
+    return source;
   };
   const result: Location[] = [];
   for (const s of spans) {
     const rel = relative(root, await realpath(s.file).catch(() => s.file));
     // 워크트리 밖(타입 정의 라이브러리 등)은 제외한다
     if (rel.startsWith('..')) continue;
-    result.push({ path: rel, line: s.start.line, column: s.start.offset, preview: (s.lineText ?? (await lineOf(s.file, s.start.line))).trim() });
+    const source = await sourceOf(s.file);
+    const start = source.getLineStarts()[s.start.line - 1] ?? source.text.length;
+    const offset = start + s.start.offset - 1;
+    const statement = source.statements.find(node => node.end > offset);
+    const isImport = statement && (ts.isImportDeclaration(statement) || ts.isImportEqualsDeclaration(statement)) && statement.getStart(source) <= offset;
+    const preview = s.lineText ?? source.text.slice(start, source.getLineStarts()[s.start.line]);
+    result.push({ path: rel, line: s.start.line, column: s.start.offset, preview: preview.trim(), ...(isImport && { isImport: true }) });
   }
   return result;
 }
