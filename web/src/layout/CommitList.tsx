@@ -36,7 +36,7 @@ function openCommitMenu(c: Commit, e: React.MouseEvent) {
 }
 
 export function CommitList() {
-  const { branch, base, baseOnly, filter, setFilter, selection, select, refreshTick, toast } = useStore();
+  const { branch, base, baseOnly, setBaseOnly, filter, setFilter, selection, select, refreshTick, toast } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
   // 상세를 × 로 닫은 커밋(다시 고르면 다시 보인다)
   const [closedSha, setClosedSha] = useState<string | null>(null);
@@ -129,6 +129,19 @@ export function CommitList() {
       ) : (
         <div className="panel-title panel-title-row">
           <span>Commits</span>
+          <span className="panel-actions">
+          <button
+            className={`chip ${baseOnly && base && branch !== base ? 'active' : ''}`}
+            disabled={!base || branch === base}
+            title={
+              base
+                ? `켜면 ${base}에는 없고 선택한 브랜치에만 있는 커밋만 보여줍니다(git log ${base}..브랜치).\n에이전트가 이 브랜치에서 새로 만든 커밋만 리뷰할 때 씁니다.\n끄면 브랜치 전체 히스토리를 보여줍니다.`
+                : '기준 브랜치(origin/HEAD, main, master)를 찾지 못해 쓸 수 없습니다'
+            }
+            onClick={() => setBaseOnly(!baseOnly)}
+          >
+            이 브랜치만
+          </button>
           <button
             className={`icon-button small ${filter ? 'active' : ''}`}
             title="커밋 메시지/작성자 필터"
@@ -142,6 +155,7 @@ export function CommitList() {
               />
             </svg>
           </button>
+          </span>
         </div>
       )}
       <div className="list" onScroll={onScroll}>

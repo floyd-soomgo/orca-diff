@@ -4,7 +4,7 @@ import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
 import { useStore } from '../store.ts';
 
 export function TopBar() {
-  const { branch, base, baseOnly, setBranch, setBaseOnly, refresh, toast } = useStore();
+  const { branch, base, setBranch, refresh, toast } = useStore();
   const [worktrees, setWorktrees] = useState<{ path: string; branch: string | null }[]>([]);
   const [branches, setBranches] = useState<Branches | null>(null);
 
@@ -21,7 +21,6 @@ export function TopBar() {
   const switchWorktree = (path: string) => {
     location.search = `?${new URLSearchParams({ key: KEY, wt: path })}`;
   };
-  const baseDisabled = !base || branch === base;
 
   return (
     <div className="topbar">
@@ -47,16 +46,6 @@ export function TopBar() {
             {branches?.remote.map((b) => <option key={b} value={b}>{b}</option>)}
           </optgroup>
         </select>
-      </label>
-      <label
-        title={
-          base
-            ? `켜면 ${base}에는 없고 선택한 브랜치에만 있는 커밋만 보여줍니다(git log ${base}..브랜치).\n에이전트가 이 브랜치에서 새로 만든 커밋만 리뷰할 때 씁니다.\n끄면 브랜치 전체 히스토리를 보여줍니다.`
-            : '기준 브랜치(origin/HEAD, main, master)를 찾지 못해 쓸 수 없습니다'
-        }
-      >
-        <input type="checkbox" checked={baseOnly && !baseDisabled} disabled={baseDisabled} onChange={(e) => setBaseOnly(e.target.checked)} />
-        이 브랜치 커밋만 ({base ? `${base} 이후` : '기준 없음'})
       </label>
       <span className="topbar-spacer" />
       <button className="icon-button" onClick={refresh} title="새로고침" aria-label="새로고침">
