@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getPref, setPref } from '../prefs.ts';
 
 const STORAGE_KEY = 'orca-review:font';
 const DEFAULT = { family: 'Menlo', size: 13 };
@@ -42,7 +43,7 @@ interface FontState {
 
 function load(): { family: string; size: number } {
   try {
-    const v = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    const v = getPref<{ family?: unknown; size?: unknown }>('font', JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'));
     return { family: typeof v.family === 'string' ? v.family : DEFAULT.family, size: clampFontSize(Number(v.size ?? DEFAULT.size)) };
   } catch {
     return DEFAULT;
@@ -53,12 +54,8 @@ export const useFontSettings = create<FontState>((set, get) => ({
   ...load(),
   set: (patch) => {
     set({ ...patch, ...(patch.size !== undefined ? { size: clampFontSize(patch.size) } : {}) });
-    try {
-      const { family, size } = get();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ family, size }));
-    } catch {
-      // 저장 실패는 무시(편의 기능)
-    }
+    const { family, size } = get();
+    setPref('font', { family, size });
   },
 }));
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import type { Change, FilePair, Source } from '../../../server/shared/types.ts';
 import { getFilePair } from '../api.ts';
+import { getPref, setPref } from '../prefs.ts';
 import { languageOf, monaco, READONLY_OPTIONS } from '../monaco/setup.ts';
 import { editorFontOptions, useFontSettings } from '../settings/fontSettings.ts';
 import { useStore } from '../store.ts';
@@ -12,11 +13,13 @@ const PREFS_KEY = 'orca-review:diff-prefs';
 interface DiffPrefs { sideBySide: boolean; hunksOnly: boolean }
 
 function loadPrefs(): DiffPrefs {
+  let legacy: Partial<DiffPrefs> = {};
   try {
-    return { sideBySide: true, hunksOnly: true, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
+    legacy = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
   } catch {
-    return { sideBySide: true, hunksOnly: true };
+    // 예전 값이 없거나 깨졌으면 무시
   }
+  return { sideBySide: true, hunksOnly: true, ...getPref<Partial<DiffPrefs>>('diff', legacy) };
 }
 
 // Split/Unified, Hunks/전체 토글은 모든 diff 탭이 공유하고 마지막 선택을 기억한다
@@ -24,12 +27,8 @@ const usePrefs = create<DiffPrefs & { set(p: Partial<DiffPrefs>): void }>((set, 
   ...loadPrefs(),
   set: (p) => {
     set(p);
-    try {
-      const { sideBySide, hunksOnly } = get();
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ sideBySide, hunksOnly }));
-    } catch {
-      // 저장 실패는 무시(편의 기능)
-    }
+    const { sideBySide, hunksOnly } = get();
+    setPref('diff', { sideBySide, hunksOnly });
   },
 }));
 

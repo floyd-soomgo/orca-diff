@@ -1,14 +1,21 @@
 import { useState } from 'react';
+import { getPref, setPref } from '../prefs.ts';
 
 const STORAGE_PREFIX = 'orca-review:size:';
 
-function readSize(id: string, fallback: number): number {
+// 예전 버전이 브라우저에 저장한 값은 서버 설정이 없을 때만 쓴다
+function legacySize(id: string): number | null {
   try {
     const v = Number(localStorage.getItem(STORAGE_PREFIX + id));
-    return v > 0 ? v : fallback;
+    return v > 0 ? v : null;
   } catch {
-    return fallback;
+    return null;
   }
+}
+
+function readSize(id: string, fallback: number): number {
+  const v = Number(getPref(`size.${id}`, legacySize(id) ?? fallback));
+  return v > 0 ? v : fallback;
 }
 
 // 드래그로 조절하고 브라우저에 기억하는 패널 크기(px)
@@ -16,11 +23,7 @@ export function usePanelSize(id: string, fallback: number) {
   const [size, setSize] = useState(() => readSize(id, fallback));
   const save = (v: number) => {
     setSize(v);
-    try {
-      localStorage.setItem(STORAGE_PREFIX + id, String(v));
-    } catch {
-      // 저장 실패는 무시(크기 기억은 편의 기능)
-    }
+    setPref(`size.${id}`, v);
   };
   return [size, save] as const;
 }

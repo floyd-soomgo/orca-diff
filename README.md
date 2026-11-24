@@ -22,7 +22,7 @@ orca-review
 
 - 로컬 서버(`127.0.0.1:4517`, `ORCA_REVIEW_PORT`로 변경)가 없으면 띄우고, 있으면 재사용합니다.
 - Orca가 있으면 그 워크트리의 Orca 브라우저 탭으로, 없으면 기본 브라우저로 엽니다. Orca 탭은 하단/측면 스플릿으로 옮길 수 있습니다.
-- 접속 키는 `~/.orca-review/key`에 저장되고, 서버 로그는 `~/.orca-review/server.log`에 쌓입니다.
+- 접속 키는 `~/.orca-review/key`, UI 설정(패널 크기·글꼴·diff 보기 방식)은 `~/.orca-review/prefs.json`에 저장되어 어느 탭·브라우저에서 열어도 같게 적용됩니다. 서버 로그는 `~/.orca-review/server.log`에 쌓입니다.
 - 코드를 업데이트한 뒤에는 `npm run build`를 다시 하고 서버를 재시작하세요(`pkill -f orca-review/server/index.ts` 후 다시 `orca-review`).
 
 ## 화면
