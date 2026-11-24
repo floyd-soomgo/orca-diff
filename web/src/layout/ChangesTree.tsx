@@ -72,12 +72,12 @@ export function ChangesTree() {
                 {changes.map((c) => (
                   <div
                     key={c.path}
-                    className={`row file ${dir ? 'indented' : ''}`}
+                    className={`row file s-${c.status} ${dir ? 'indented' : ''}`}
                     onClick={() => openDiff(g.source, c)}
                     title={c.oldPath ? `${c.oldPath} → ${c.path}` : c.path}
                   >
-                    <span className={`status s-${c.status}`}>{c.status}</span>
-                    {c.path.slice(dir ? dir.length + 1 : 0)}
+                    <span className="status">{c.status}</span>
+                    <span className="name">{c.path.slice(dir ? dir.length + 1 : 0)}</span>
                   </div>
                 ))}
               </div>

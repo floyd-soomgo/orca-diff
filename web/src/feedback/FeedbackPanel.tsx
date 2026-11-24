@@ -99,7 +99,7 @@ export function FeedbackPanel() {
                 <option key={t.handle} value={t.handle}>{t.title}</option>
               ))}
             </select>
-            <button onClick={loadTerminals} title="터미널 목록 새로고침">⟳</button>
+            <button className="icon-button" onClick={loadTerminals} title="터미널 목록 새로고침" aria-label="터미널 목록 새로고침">↻</button>
           </>
         )}
         <button className="primary" disabled={unsent.length === 0 || sending} onClick={deliver}>

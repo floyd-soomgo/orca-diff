@@ -40,19 +40,32 @@ interface Composer { side: Side; startLine: number; endLine: number; editId?: st
 // diff의 양쪽 에디터에 라인 코멘트를 그리고, 라인 번호 클릭/드래그로 새 코멘트를 받는다
 export function attachComments(ctx: Ctx): monaco.IDisposable {
   const zoneIds: Record<Side, string[]> = { old: [], new: [] };
+  const zoneNodes: Record<Side, HTMLElement[]> = { old: [], new: [] };
   let composer: Composer | null = null;
+
+  // view zone은 스크롤 폭 전체로 펼쳐지므로, 박스를 보이는 본문 폭에 맞춰야 Split 보기에서 반대쪽 패널에 가려지지 않는다
+  const fitWidth = (side: Side, node: HTMLElement) => {
+    const { contentWidth, verticalScrollbarWidth } = ctx.editors[side].getLayoutInfo();
+    node.style.width = `${Math.max(160, Math.min(640, contentWidth - verticalScrollbarWidth - 24))}px`;
+  };
 
   const clearZones = () => {
     for (const side of ['old', 'new'] as const) {
       ctx.editors[side].changeViewZones((acc) => zoneIds[side].forEach((id) => acc.removeZone(id)));
       zoneIds[side] = [];
+      zoneNodes[side] = [];
     }
   };
 
   const addZone = (side: Side, afterLineNumber: number, domNode: HTMLElement, lines: number) => {
     isolate(domNode);
+    fitWidth(side, domNode);
+    zoneNodes[side].push(domNode);
+    // Monaco가 zone의 바깥 노드 폭을 100%로 덮어쓰므로 폭은 안쪽 박스에 준다
+    const outer = el('div', 'comment-zone-outer');
+    outer.append(domNode);
     ctx.editors[side].changeViewZones((acc) => {
-      zoneIds[side].push(acc.addZone({ afterLineNumber, heightInPx: lines * LINE_PX + 16, domNode }));
+      zoneIds[side].push(acc.addZone({ afterLineNumber, heightInPx: lines * LINE_PX + 16, domNode: outer }));
     });
   };
 
@@ -79,6 +92,10 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     box.append(el('div', 'comment-label', `${cmp.side === 'old' ? '삭제된 코드' : ''} ${range}행 코멘트 (Cmd+Enter 저장, Esc 취소)`.trim()));
     const textarea = el('textarea', 'comment-input');
     textarea.value = cmp.body;
+    // 다시 그려져도 입력 중인 내용이 남도록
+    textarea.addEventListener('input', () => {
+      cmp.body = textarea.value;
+    });
     const save = () => {
       const body = textarea.value.trim();
       if (!body) return;
@@ -150,6 +167,10 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     }),
   );
 
+  const layoutListeners = (['old', 'new'] as const).map((side) =>
+    ctx.editors[side].onDidLayoutChange(() => zoneNodes[side].forEach((node) => fitWidth(side, node))),
+  );
+
   render();
   const unsubscribe = useFeedback.subscribe((s, prev) => {
     if (s.comments !== prev.comments) render();
@@ -159,6 +180,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     dispose() {
       unsubscribe();
       gutterListeners.forEach((d) => d.dispose());
+      layoutListeners.forEach((d) => d.dispose());
       clearZones();
     },
   };
