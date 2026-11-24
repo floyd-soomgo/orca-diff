@@ -89,3 +89,15 @@ select, input[type='text'], input:not([type]), textarea { background: #45494a; b
 .toasts { position: fixed; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 1000; }
 .toast { background: #4b4d4d; border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; max-width: 420px; }
 .toast.error { border-color: var(--error); }
+
+.diff-tab { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.diff-toolbar { display: flex; gap: 12px; align-items: center; padding: 3px 8px; background: var(--panel-dark); border-bottom: 1px solid var(--border); flex: none; }
+.diff-toolbar .path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+.diff-toolbar .readonly { color: var(--dim); font-size: 11px; }
+.toggle { display: flex; }
+.toggle button { border-radius: 0; }
+.toggle button:first-child { border-radius: 3px 0 0 3px; }
+.toggle button:last-child { border-radius: 0 3px 3px 0; border-left: none; }
+.toggle button.active { background: var(--selected); color: #fff; }
+.monaco-host { flex: 1; min-height: 0; }
+.reveal-line { background: rgba(74, 136, 199, 0.35); }

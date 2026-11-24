@@ -1,3 +1,5 @@
+import { DiffTab } from './diff/DiffTab.tsx';
+import { FileTab } from './diff/FileTab.tsx';
 import { BottomPanel } from './layout/BottomPanel.tsx';
 import { ChangesTree } from './layout/ChangesTree.tsx';
 import { CommitList } from './layout/CommitList.tsx';
@@ -7,7 +9,7 @@ import { TopBar } from './layout/TopBar.tsx';
 import { type Tab, useStore } from './store.ts';
 
 function renderTab(tab: Tab) {
-  return <div className="editor-empty">{tab.kind === 'diff' ? tab.change.path : tab.path}</div>;
+  return tab.kind === 'diff' ? <DiffTab source={tab.source} change={tab.change} /> : <FileTab path={tab.path} reveal={tab.reveal} />;
 }
 
 function Toasts() {
