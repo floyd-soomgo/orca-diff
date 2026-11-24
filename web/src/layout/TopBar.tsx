@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { type Branches, getBranches, getWorktrees, KEY, WT } from '../api.ts';
+import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
 import { useStore } from '../store.ts';
 
 export function TopBar() {
@@ -60,6 +61,7 @@ export function TopBar() {
           />
         </svg>
       </button>
+      <FontSettingsButton />
     </div>
   );
 }

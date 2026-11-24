@@ -15,8 +15,11 @@ interface Ctx {
   contents: Record<Side, string>;
 }
 
-const LINE_PX = 19;
 const composers = new Map<string, Composer>();
+// 박스 높이(px): 내용 글꼴은 UI 13px 고정이라 에디터 글꼴 크기와 무관
+const BODY_LINE_PX = 19;
+const COMMENT_BASE_PX = 58;
+const COMPOSER_PX = 168;
 
 function isFor(c: ReviewComment, ctx: Ctx): c is LineComment {
   return c.target.kind === 'line' && c.target.path === ctx.change.path && sourceKey(c.target.source) === sourceKey(ctx.source);
@@ -31,7 +34,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 
 // view zone 안의 입력이 에디터 단축키·선택으로 새지 않게 막는다
 function isolate(node: HTMLElement) {
-  for (const type of ['keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'click', 'wheel', 'paste', 'copy']) {
+  for (const type of ['keydown', 'keyup', 'keypress', 'pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup', 'mousemove', 'click', 'dblclick', 'wheel', 'paste', 'copy']) {
     node.addEventListener(type, (e) => e.stopPropagation());
   }
 }
@@ -65,7 +68,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     }
   };
 
-  const addZone = (side: Side, afterLineNumber: number, domNode: HTMLElement, lines: number) => {
+  const addZone = (side: Side, afterLineNumber: number, domNode: HTMLElement, heightInPx: number) => {
     isolate(domNode);
     fitWidth(side, domNode);
     zoneNodes[side].push(domNode);
@@ -73,7 +76,8 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     const outer = el('div', 'comment-zone-outer');
     outer.append(domNode);
     ctx.editors[side].changeViewZones((acc) => {
-      zoneIds[side].push(acc.addZone({ afterLineNumber, heightInPx: lines * LINE_PX + 16, domNode: outer }));
+      // suppressMouseDown: Monaco가 zone 위 클릭을 텍스트 선택으로 가져가지 않게 한다
+      zoneIds[side].push(acc.addZone({ afterLineNumber, heightInPx, domNode: outer, suppressMouseDown: true }));
     });
   };
 
@@ -144,9 +148,9 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     clearZones();
     for (const c of useFeedback.getState().comments) {
       if (!isFor(c, ctx) || c.stale || c.id === composer?.editId) continue;
-      addZone(c.target.side, c.target.endLine, commentNode(c), Math.max(1, c.body.split('\n').length) + 1);
+      addZone(c.target.side, c.target.endLine, commentNode(c), COMMENT_BASE_PX + BODY_LINE_PX * Math.max(1, c.body.split('\n').length));
     }
-    if (composer) addZone(composer.side, composer.endLine, composerNode(composer), 6);
+    if (composer) addZone(composer.side, composer.endLine, composerNode(composer), COMPOSER_PX);
   }
 
   // 내용이 바뀌었으면 발췌로 위치를 다시 찾고, 못 찾으면 stale로 표시
@@ -183,6 +187,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
   const unsubscribe = useFeedback.subscribe((s, prev) => {
     if (s.comments !== prev.comments) render();
   });
+
 
   return {
     dispose() {

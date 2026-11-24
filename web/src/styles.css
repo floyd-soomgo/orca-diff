@@ -130,13 +130,16 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 
 button.link { border: none; background: none; color: var(--accent); padding: 0; }
 
-.comment-zone-outer { height: 100%; }
-.comment-zone { margin: 4px 8px; padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #d4a72c; box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04); border-radius: 4px; font: 13px/1.4 -apple-system, sans-serif; color: var(--text); overflow: auto; height: calc(100% - 8px); }
-.comment-zone.composer { border-left-color: var(--accent); display: flex; flex-direction: column; gap: 4px; }
-.comment-body { white-space: pre-wrap; }
+/* view zone은 코드 줄 레이어 아래에 깔리므로, 클릭을 받도록 코멘트 박스만 위로 올린다 */
+.comment-zone-outer { height: 100%; z-index: 10; }
+.comment-zone { box-sizing: border-box; height: calc(100% - 8px); margin: 4px 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #d4a72c; border-radius: 6px; box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04); font: 13px/19px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); overflow: hidden; cursor: default; user-select: text; }
+.comment-zone.composer { border-left-color: var(--accent); }
+.comment-body { white-space: pre-wrap; flex: 1; overflow: auto; }
 .comment-label { color: var(--dim); font-size: 12px; }
-.comment-input { width: 100%; flex: 1; min-height: 60px; resize: vertical; font: 13px/1.4 -apple-system, sans-serif; }
-.comment-actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 4px; }
+.comment-input { display: block; width: 100%; flex: 1; min-height: 0; margin: 0; resize: none; font: 13px/19px -apple-system, BlinkMacSystemFont, sans-serif; }
+.dialog .comment-input { resize: vertical; }
+.comment-actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex: none; }
+.comment-zone button { cursor: pointer; }
 .comment-actions .sent, .badge { color: var(--dim); font-size: 11px; border: 1px solid var(--border); border-radius: 8px; padding: 0 6px; margin-left: 6px; }
 .badge.warn { color: var(--warn); border-color: var(--warn); }
 button.primary { background: var(--primary); border-color: var(--primary-border); color: #fff; font-weight: 600; }
@@ -155,3 +158,11 @@ button.primary:hover { background: #1c8139; }
 .dialog .comment-input { min-height: 120px; }
 .context-menu { position: fixed; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; min-width: 180px; box-shadow: var(--shadow); }
 .context-menu .row { padding: 4px 12px; }
+
+.font-settings { position: relative; }
+.font-popover { position: absolute; right: 0; top: 34px; z-index: 960; width: 300px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow); }
+.font-popover .popover-title { font-weight: 600; }
+.font-popover label { display: flex; gap: 8px; align-items: center; color: var(--dim); }
+.font-popover select { flex: 1; }
+.font-popover input[type='number'] { width: 64px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; }
+.font-preview { padding: 8px; background: var(--panel); border: 1px solid var(--border-muted); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

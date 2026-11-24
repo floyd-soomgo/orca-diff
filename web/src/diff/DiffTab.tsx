@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Change, FilePair, Source } from '../../../server/shared/types.ts';
 import { getFilePair } from '../api.ts';
 import { languageOf, monaco, READONLY_OPTIONS } from '../monaco/setup.ts';
+import { editorFontOptions, useFontSettings } from '../settings/fontSettings.ts';
 import { useStore } from '../store.ts';
 
 const POLL_MS = 3000;
@@ -58,6 +59,7 @@ export function DiffTab({ source, change, attach }: Props) {
   const { sideBySide, hunksOnly, set } = usePrefs();
   const refreshTick = useStore((s) => s.refreshTick);
   const toast = useStore((s) => s.toast);
+  const font = useFontSettings();
 
   // 내용 로드(워킹트리 기준이면 주기적으로 다시 읽는다)
   useEffect(() => {
@@ -89,6 +91,7 @@ export function DiffTab({ source, change, attach }: Props) {
     if (!showEditor || !host.current) return;
     const editor = monaco.editor.createDiffEditor(host.current, {
       ...READONLY_OPTIONS,
+      ...editorFontOptions(useFontSettings.getState()),
       originalEditable: false,
       renderSideBySide: usePrefs.getState().sideBySide,
       useInlineViewWhenSpaceIsLimited: false,
@@ -125,6 +128,11 @@ export function DiffTab({ source, change, attach }: Props) {
     });
     return () => disposable?.dispose();
   }, [pair, attach, source, change, showEditor]);
+
+  useEffect(() => {
+    editorRef.current?.updateOptions(editorFontOptions(font));
+    monaco.editor.remeasureFonts();
+  }, [font.family, font.size, showEditor]);
 
   useEffect(() => {
     editorRef.current?.updateOptions({ renderSideBySide: sideBySide, hideUnchangedRegions: { enabled: hunksOnly } });

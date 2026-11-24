@@ -92,8 +92,6 @@ export const READONLY_OPTIONS = {
   minimap: { enabled: false },
   automaticLayout: true,
   scrollBeyondLastLine: false,
-  fontFamily: 'JetBrains Mono, Menlo, monospace',
-  fontSize: 13,
   renderLineHighlight: 'line',
   occurrencesHighlight: 'off',
   links: false,

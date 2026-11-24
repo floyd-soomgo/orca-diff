@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getFile } from '../api.ts';
 import { languageOf, monaco, READONLY_OPTIONS } from '../monaco/setup.ts';
+import { editorFontOptions, useFontSettings } from '../settings/fontSettings.ts';
 import { useStore } from '../store.ts';
 
 interface Props {
@@ -15,6 +16,7 @@ export function FileTab({ path, reveal, attach }: Props) {
   const [content, setContent] = useState<string | null>(null);
   const refreshTick = useStore((s) => s.refreshTick);
   const toast = useStore((s) => s.toast);
+  const font = useFontSettings();
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +32,7 @@ export function FileTab({ path, reveal, attach }: Props) {
     if (!host.current) return;
     const editor = monaco.editor.create(host.current, {
       ...READONLY_OPTIONS,
+      ...editorFontOptions(useFontSettings.getState()),
       model: monaco.editor.createModel('', languageOf(path)),
     });
     editorRef.current = editor;
@@ -42,6 +45,11 @@ export function FileTab({ path, reveal, attach }: Props) {
       editorRef.current = null;
     };
   }, [path, attach]);
+
+  useEffect(() => {
+    editorRef.current?.updateOptions(editorFontOptions(font));
+    monaco.editor.remeasureFonts();
+  }, [font.family, font.size]);
 
   useEffect(() => {
     const model = editorRef.current?.getModel();
