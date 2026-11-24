@@ -177,8 +177,10 @@ export function attachComments(ctx: Ctx): CommentsHandle {
   // 라인 번호 영역: 호버하면 + 버튼, 드래그·Shift+클릭으로 코멘트 범위를 노란색으로 표시하고 놓으면 입력창을 연다
   const T = monaco.editor.MouseTargetType;
   const GUTTER = new Set([T.GUTTER_LINE_NUMBERS, T.GUTTER_GLYPH_MARGIN, T.GUTTER_LINE_DECORATIONS]);
+  // Monaco의 펼침/접힘 컨트롤(숨긴 줄 위젯, 펼친 구간을 다시 접는 버튼, 코드 접기) 위 클릭은 라인 선택이 아니다
+  const MONACO_CONTROLS = '.overlayWidgets, .diff-hidden-lines, .diff-hidden-lines-compact, .diff-hidden-lines-disclosure, .fold-unchanged, [class*="codicon-folding-"]';
   const onGutter = (e: monaco.editor.IEditorMouseEvent) =>
-    GUTTER.has(e.target.type) && !(e.event.browserEvent.target as HTMLElement | null)?.closest('.overlayWidgets, .diff-hidden-lines');
+    GUTTER.has(e.target.type) && !(e.event.browserEvent.target as HTMLElement | null)?.closest(MONACO_CONTROLS);
   const hoverDeco = { old: ctx.editors.old.createDecorationsCollection(), new: ctx.editors.new.createDecorationsCollection() };
   const rangeDeco = { old: ctx.editors.old.createDecorationsCollection(), new: ctx.editors.new.createDecorationsCollection() };
   let drag: { side: Side; anchor: number; current: number } | null = null;
