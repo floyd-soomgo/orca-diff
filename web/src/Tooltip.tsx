@@ -1,68 +1,95 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const SHOW_DELAY_MS = 400;
-const MAX_WIDTH = 360;
+const OFFSET_X = 12;
+const OFFSET_Y = 18;
+const MARGIN = 8;
 
 // title 속성의 툴팁을 앱이 직접 그린다(Orca 내장 브라우저는 OS 기본 툴팁을 띄우지 않음).
-// 처음 올라갈 때 title을 data-tip으로 옮겨 기본 툴팁과 겹치지 않게 한다.
+// 처음 올라갈 때 title을 data-tip으로 옮겨 기본 툴팁과 겹치지 않게 하고, 커서 위치 기준으로 띄운다.
 export function Tooltip() {
-  const [tip, setTip] = useState<{ text: string; x: number; y: number; above: boolean } | null>(null);
+  const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const shown = useRef(false);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let current: HTMLElement | null = null;
+    let mouse = { x: 0, y: 0 };
 
     const hide = () => {
       clearTimeout(timer);
       current = null;
+      shown.current = false;
       setTip(null);
     };
 
-    const onOver = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest<HTMLElement>('[title], [data-tip]');
-      if (el === current) return;
-      hide();
+    // 커서가 멈춘 뒤에 뜨도록, 움직이면 타이머를 다시 건다
+    const schedule = () => {
+      clearTimeout(timer);
+      const el = current;
       if (!el) return;
-      const title = el.getAttribute('title');
-      if (title) {
-        el.setAttribute('data-tip', title);
-        el.removeAttribute('title');
-      }
-      const text = el.getAttribute('data-tip');
-      if (!text) return;
-      current = el;
       timer = setTimeout(() => {
-        if (current !== el || !el.isConnected) return;
-        const r = el.getBoundingClientRect();
-        const above = r.bottom + 60 > window.innerHeight;
-        const x = Math.min(Math.max(8, r.left + r.width / 2 - MAX_WIDTH / 2), window.innerWidth - MAX_WIDTH - 8);
-        setTip({ text, x, y: above ? r.top - 6 : r.bottom + 6, above });
+        const text = el.getAttribute('data-tip');
+        if (current === el && el.isConnected && text) {
+          shown.current = true;
+          setTip({ text, x: mouse.x, y: mouse.y });
+        }
       }, SHOW_DELAY_MS);
     };
 
-    const onOut = (e: MouseEvent) => {
-      if (current && !current.contains(e.relatedTarget as Node | null)) hide();
+    const onMove = (e: MouseEvent) => {
+      mouse = { x: e.clientX, y: e.clientY };
+      const el = (e.target as HTMLElement | null)?.closest<HTMLElement>('[title], [data-tip]') ?? null;
+      if (el !== current) {
+        hide();
+        if (!el) return;
+        const title = el.getAttribute('title');
+        if (title) {
+          el.setAttribute('data-tip', title);
+          el.removeAttribute('title');
+        }
+        if (!el.getAttribute('data-tip')) return;
+        current = el;
+        schedule();
+      } else if (!shown.current) {
+        // 같은 요소 안에서 움직이는 중이면 멈출 때까지 기다린다(이미 떴으면 그대로 둔다)
+        schedule();
+      }
     };
 
-    window.addEventListener('mouseover', onOver);
-    window.addEventListener('mouseout', onOut);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseleave', hide);
     window.addEventListener('mousedown', hide, true);
     window.addEventListener('wheel', hide, true);
     window.addEventListener('keydown', hide, true);
     return () => {
       hide();
-      window.removeEventListener('mouseover', onOver);
-      window.removeEventListener('mouseout', onOut);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', hide);
       window.removeEventListener('mousedown', hide, true);
       window.removeEventListener('wheel', hide, true);
       window.removeEventListener('keydown', hide, true);
     };
   }, []);
 
+  // 그린 뒤 크기를 재서 화면 밖으로 나가면 안쪽으로 밀어 넣는다(아래가 모자라면 커서 위로)
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box || !tip) return;
+    const { width, height } = box.getBoundingClientRect();
+    const left = Math.min(tip.x + OFFSET_X, window.innerWidth - width - MARGIN);
+    const below = tip.y + OFFSET_Y;
+    const top = below + height + MARGIN > window.innerHeight ? tip.y - height - MARGIN : below;
+    box.style.left = `${Math.max(MARGIN, left)}px`;
+    box.style.top = `${Math.max(MARGIN, top)}px`;
+    box.style.visibility = 'visible';
+  }, [tip]);
+
   if (!tip) return null;
   return (
-    <div className={`tooltip ${tip.above ? 'above' : ''}`} style={{ left: tip.x, top: tip.y, maxWidth: MAX_WIDTH }} role="tooltip">
-      <span>{tip.text}</span>
+    <div ref={boxRef} className="tooltip" style={{ left: 0, top: 0, visibility: 'hidden' }} role="tooltip">
+      {tip.text}
     </div>
   );
 }
