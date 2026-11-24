@@ -34,6 +34,8 @@ interface State {
   openDiff(source: Source, change: Change): void;
   openFile(path: string, reveal?: { line: number; column: number }): void;
   closeTab(id: string): void;
+  closeOthers(id: string): void;
+  closeAll(): void;
   setActiveTab(id: string): void;
   setBottomPanel(panel: BottomPanel): void;
   toast(message: string, tone?: Toast['tone']): void;
@@ -87,6 +89,9 @@ export const useStore = create<State>((set, get) => ({
       const activeTabId = s.activeTabId === id ? (tabs[Math.min(idx, tabs.length - 1)]?.id ?? null) : s.activeTabId;
       return { tabs, activeTabId };
     }),
+
+  closeOthers: (id) => set((s) => ({ tabs: s.tabs.filter((t) => t.id === id), activeTabId: id })),
+  closeAll: () => set({ tabs: [], activeTabId: null }),
 
   setActiveTab: (id) => set({ activeTabId: id }),
   setBottomPanel: (bottomPanel) => set({ bottomPanel }),
