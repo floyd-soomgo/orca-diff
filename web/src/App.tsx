@@ -34,7 +34,8 @@ function copySelection(editor: monaco.editor.ICodeEditor) {
 
 function attachEditorMenu(editor: monaco.editor.ICodeEditor, opts: EditorMenuOptions): monaco.IDisposable {
   const copyKey = editor.onKeyDown((e) => {
-    if (e.metaKey && e.keyCode === monaco.KeyCode.KeyC && !editor.getSelection()?.isEmpty()) {
+    // Cmd+C는 Orca 단축키와 겹쳐 함께 실행되므로 Ctrl+C로 복사한다
+    if (e.ctrlKey && !e.metaKey && e.keyCode === monaco.KeyCode.KeyC && !editor.getSelection()?.isEmpty()) {
       e.preventDefault();
       e.stopPropagation();
       copySelection(editor);
@@ -54,7 +55,7 @@ function attachEditorMenu(editor: monaco.editor.ICodeEditor, opts: EditorMenuOpt
 
     const items: MenuItem[] = [];
     if (inSelection) {
-      items.push({ label: '선택한 텍스트 복사', shortcut: '⌘C', onSelect: () => copySelection(editor) }, 'separator');
+      items.push({ label: '선택한 텍스트 복사', shortcut: '⌃C', onSelect: () => copySelection(editor) }, 'separator');
     }
     if (opts.nav?.enabled) {
       items.push(
