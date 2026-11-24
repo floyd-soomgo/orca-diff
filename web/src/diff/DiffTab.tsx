@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import type { Change, FilePair, Source } from '../../../server/shared/types.ts';
 import { getFilePair } from '../api.ts';
+import { PatchView } from './PatchView.tsx';
 import { getPref, setPref } from '../prefs.ts';
 import { languageOf, monaco, READONLY_OPTIONS } from '../monaco/setup.ts';
 import { editorFontOptions, useFontSettings } from '../settings/fontSettings.ts';
@@ -190,7 +191,7 @@ export function DiffTab({ source, change, attach }: Props) {
           {change.path}
         </span>
         {single && <span className={`file-badge ${single}`}>{single === 'new' ? '새 파일' : '삭제된 파일'}</span>}
-        {!single && (
+        {!single && !pair?.tooLarge && (
         <>
         <div className="toggle">
           <button className={sideBySide ? 'active' : ''} onClick={() => set({ sideBySide: true })}>Split</button>
@@ -204,7 +205,7 @@ export function DiffTab({ source, change, attach }: Props) {
         )}
       </div>
       {pair?.binary && <div className="editor-empty">바이너리 파일은 diff를 표시하지 않습니다</div>}
-      {pair?.tooLarge && <div className="editor-empty">파일이 너무 커서(1 MiB 초과) diff를 표시하지 않습니다</div>}
+      {pair?.tooLarge && <PatchView source={source} change={change} />}
       {!pair && <div className="editor-empty">불러오는 중…</div>}
       <div ref={host} className="monaco-host" style={{ display: showEditor ? 'block' : 'none' }} />
     </div>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { assertInside, listChanges, readFilePair } from '../server/git/changes.ts';
+import { assertInside, listChanges, readFilePair, readPatch } from '../server/git/changes.ts';
 import { gitFixture } from './helpers/gitFixture.ts';
 
 const byPath = <T extends { path: string }>(xs: T[]) => [...xs].sort((a, b) => a.path.localeCompare(b.path));
@@ -131,5 +131,31 @@ describe('assertInside', () => {
     expect(() => assertInside('/repo', 'a/../../x')).toThrow();
     expect(() => assertInside('/repo', '/etc/passwd')).toThrow();
     expect(assertInside('/repo', 'src/a.ts')).toBe('/repo/src/a.ts');
+  });
+});
+
+describe('readPatch', () => {
+  test('큰 파일은 변경된 부분만 담은 패치를 돌려준다', async () => {
+    const fx = await gitFixture();
+    const lines = Array.from({ length: 60000 }, (_, i) => `line ${i}`);
+    await fx.commit({ 'big.json': lines.join('\n') + '\n' }, 'init');
+    lines[30000] = 'changed line';
+    const sha = await fx.commit({ 'big.json': lines.join('\n') + '\n' }, 'change');
+
+    const { patch, truncated } = await readPatch(fx.dir, { kind: 'commits', from: sha, to: sha }, { path: 'big.json', status: 'M', binary: false });
+    expect(truncated).toBe(false);
+    expect(patch).toContain('@@');
+    expect(patch).toContain('-line 30000');
+    expect(patch).toContain('+changed line');
+    expect(patch.length).toBeLessThan(2000);
+  });
+
+  test('unstaged 수정도 패치로 읽는다', async () => {
+    const fx = await gitFixture();
+    await fx.commit({ 'a.txt': 'old\n' }, 'init');
+    await fx.write({ 'a.txt': 'new\n' });
+    const { patch } = await readPatch(fx.dir, { kind: 'unstaged' }, { path: 'a.txt', status: 'M', binary: false });
+    expect(patch).toContain('-old');
+    expect(patch).toContain('+new');
   });
 });

@@ -46,3 +46,11 @@ export const getTerminals = () => request<Terminal[]>('GET', '/api/terminals');
 export const send = (handle: string, text: string) => request<{ ok: true }>('POST', '/api/send', {}, { handle, text });
 export const getComments = () => request<ReviewComment[]>('GET', '/api/comments');
 export const saveComments = (comments: ReviewComment[]) => request<{ ok: true }>('POST', '/api/comments', {}, { comments });
+export const getPatch = (source: Source, change: Change) =>
+  request<{ patch: string; truncated: boolean }>('GET', '/api/patch', {
+    source: JSON.stringify(source),
+    path: change.path,
+    status: change.status,
+    binary: change.binary ? '1' : '0',
+    ...(change.oldPath ? { oldPath: change.oldPath } : {}),
+  });

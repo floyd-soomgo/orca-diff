@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join } from 'node:path';
-import { assertInside, BadRequest, listChanges, readFilePair } from '../git/changes.ts';
+import { assertInside, BadRequest, listChanges, readFilePair, readPatch } from '../git/changes.ts';
 import { listBranches, listCommits, listWorktrees, resolveBaseRef } from '../git/history.ts';
 import { git, GitError } from '../git/run.ts';
 import { definition, type NavQuery, references } from '../ts/navigation.ts';
@@ -88,6 +88,7 @@ const coreRoutes: Routes = {
   },
   'GET /api/changes': ({ wt, query }) => listChanges(wt, parseSource(query.get('source'))),
   'GET /api/file-pair': ({ wt, query }) => readFilePair(wt, parseSource(query.get('source')), parseChange(query, wt)),
+  'GET /api/patch': ({ wt, query }) => readPatch(wt, parseSource(query.get('source')), parseChange(query, wt)),
   'POST /api/definition': ({ wt, body }) => definition(wt, parseNavQuery(body)),
   'POST /api/references': ({ wt, body }) => references(wt, parseNavQuery(body)),
   'GET /api/file': async ({ wt, query }) => ({ content: await readFile(assertInside(wt, query.get('path') ?? ''), 'utf8') }),

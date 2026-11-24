@@ -217,3 +217,8 @@ button.primary:hover { background: #1c8139; }
 .icon-button.small:hover { background: var(--hover); }
 .icon-button.small.active { color: var(--accent); }
 .comment-actions .align-left { margin-right: auto; }
+
+/* 큰 파일 패치 보기 */
+.patch-notice { padding: 4px 10px; font-size: 12px; color: var(--dim); background: #fff8c5; border-bottom: 1px solid var(--border-muted); flex: none; }
+.monaco-editor .patch-hunk-line { background: #ddf4ff; }
+.monaco-editor .patch-meta-line { background: var(--panel); }

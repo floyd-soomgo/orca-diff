@@ -127,3 +127,13 @@ export async function readFilePair(wt: string, source: Source, change: Change): 
   }
   return { original, modified, tooLarge: false, binary: false };
 }
+
+const MAX_PATCH_BYTES = 2 * 1024 * 1024;
+
+// 1 MiB를 넘는 파일은 양쪽 전체 대신 변경된 부분(git diff 패치)만 보여준다
+export async function readPatch(wt: string, source: Source, change: Change): Promise<{ patch: string; truncated: boolean }> {
+  const paths = change.oldPath ? [change.oldPath, change.path] : [change.path];
+  const out = await git(wt, ['diff', '--no-color', '--no-ext-diff', '-M', ...(await diffArgs(wt, source)), '--', ...paths]);
+  if (Buffer.byteLength(out) <= MAX_PATCH_BYTES) return { patch: out, truncated: false };
+  return { patch: Buffer.from(out).subarray(0, MAX_PATCH_BYTES).toString('utf8'), truncated: true };
+}
