@@ -46,6 +46,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
   const zoneIds: Record<Side, string[]> = { old: [], new: [] };
   const zoneNodes: Record<Side, HTMLElement[]> = { old: [], new: [] };
   // 입력 중인 코멘트는 탭 단위로 보관해 diff가 다시 로드(재부착)돼도 유지한다
+  let paintComposerRange = () => {};
   const composerKey = `${sourceKey(ctx.source)}:${ctx.change.path}`;
   let composer: Composer | null = composers.get(composerKey) ?? null;
   const setComposer = (next: Composer | null) => {
@@ -151,6 +152,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
       addZone(c.target.side, c.target.endLine, commentNode(c), COMMENT_BASE_PX + BODY_LINE_PX * Math.max(1, c.body.split('\n').length));
     }
     if (composer) addZone(composer.side, composer.endLine, composerNode(composer), COMPOSER_PX);
+    paintComposerRange();
   }
 
   // 내용이 바뀌었으면 발췌로 위치를 다시 찾고, 못 찾으면 stale로 표시
@@ -165,19 +167,77 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     }
   }
 
-  // 라인 번호 영역을 클릭/드래그/Shift+클릭하면 선택된 라인 범위로 입력창을 연다
-  const gutterListeners = (['old', 'new'] as const).map((side) =>
-    ctx.editors[side].onMouseUp((e) => {
-      if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) return;
-      const sel = ctx.editors[side].getSelection();
-      if (!sel) return;
-      const start = sel.startLineNumber;
-      // 줄 단위 선택은 다음 줄 1열에서 끝나므로 한 줄 뺀다
-      const end = sel.endColumn === 1 && sel.endLineNumber > start ? sel.endLineNumber - 1 : sel.endLineNumber;
-      setComposer({ side, startLine: start, endLine: end, body: '' });
-      render();
-    }),
-  );
+  // 라인 번호 영역: 호버하면 + 버튼, 드래그·Shift+클릭으로 코멘트 범위를 노란색으로 표시하고 놓으면 입력창을 연다
+  const T = monaco.editor.MouseTargetType;
+  const GUTTER = new Set([T.GUTTER_LINE_NUMBERS, T.GUTTER_GLYPH_MARGIN, T.GUTTER_LINE_DECORATIONS]);
+  const hoverDeco = { old: ctx.editors.old.createDecorationsCollection(), new: ctx.editors.new.createDecorationsCollection() };
+  const rangeDeco = { old: ctx.editors.old.createDecorationsCollection(), new: ctx.editors.new.createDecorationsCollection() };
+  let drag: { side: Side; anchor: number; current: number } | null = null;
+  let shiftAnchor: { side: Side; line: number } | null = null;
+
+  const paintRange = (side: Side, a: number, b: number) => {
+    rangeDeco[side].set([
+      {
+        range: new monaco.Range(Math.min(a, b), 1, Math.max(a, b), 1),
+        // zIndex: diff의 추가/삭제 줄 배경보다 위에 칠한다
+        options: { isWholeLine: true, className: 'comment-range-line', linesDecorationsClassName: 'comment-range-gutter', zIndex: 100 },
+      },
+    ]);
+  };
+  paintComposerRange = () => {
+    rangeDeco.old.clear();
+    rangeDeco.new.clear();
+    if (composer) paintRange(composer.side, composer.startLine, composer.endLine);
+  };
+
+  // 드래그 중에는 Monaco가 포인터를 잡고 있어 에디터 mousemove가 오지 않으므로 window에서 좌표로 라인을 찾는다
+  const onDragMove = (ev: MouseEvent) => {
+    if (!drag) return;
+    const line = ctx.editors[drag.side].getTargetAtClientPoint(ev.clientX, ev.clientY)?.position?.lineNumber;
+    if (line && line !== drag.current) {
+      drag.current = line;
+      paintRange(drag.side, drag.anchor, line);
+    }
+  };
+
+  const finishDrag = () => {
+    window.removeEventListener('mousemove', onDragMove);
+    if (!drag) return;
+    const { side, anchor, current } = drag;
+    drag = null;
+    const editor = ctx.editors[side];
+    editor.getDomNode()?.classList.remove('gutter-dragging');
+    // Monaco가 만든 텍스트 선택은 지운다(코멘트 범위는 노란색으로 따로 표시)
+    editor.setSelection(new monaco.Selection(current, 1, current, 1));
+    setComposer({ side, startLine: Math.min(anchor, current), endLine: Math.max(anchor, current), body: '' });
+    render();
+  };
+
+  const gutterListeners = (['old', 'new'] as const).flatMap((side) => {
+    const editor = ctx.editors[side];
+    return [
+      editor.onMouseDown((e) => {
+        const line = e.target.position?.lineNumber;
+        if (!GUTTER.has(e.target.type) || !line || !e.event.leftButton) return;
+        const anchor = e.event.shiftKey && shiftAnchor?.side === side ? shiftAnchor.line : line;
+        shiftAnchor = { side, line: anchor };
+        drag = { side, anchor, current: line };
+        editor.getDomNode()?.classList.add('gutter-dragging');
+        paintRange(side, anchor, line);
+        window.addEventListener('mousemove', onDragMove);
+        window.addEventListener('mouseup', finishDrag, { once: true });
+      }),
+      editor.onMouseMove((e) => {
+        const line = e.target.position?.lineNumber;
+        hoverDeco[side].set(
+          !drag && line && GUTTER.has(e.target.type)
+            ? [{ range: new monaco.Range(line, 1, line, 1), options: { glyphMarginClassName: 'comment-plus' } }]
+            : [],
+        );
+      }),
+      editor.onMouseLeave(() => hoverDeco[side].clear()),
+    ];
+  });
 
   const layoutListeners = (['old', 'new'] as const).map((side) =>
     ctx.editors[side].onDidLayoutChange(() => zoneNodes[side].forEach((node) => fitWidth(side, node))),
@@ -193,6 +253,13 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     dispose() {
       unsubscribe();
       gutterListeners.forEach((d) => d.dispose());
+      window.removeEventListener('mouseup', finishDrag);
+      window.removeEventListener('mousemove', onDragMove);
+      for (const side of ['old', 'new'] as const) {
+        hoverDeco[side].clear();
+        rangeDeco[side].clear();
+        ctx.editors[side].getDomNode()?.classList.remove('gutter-dragging');
+      }
       layoutListeners.forEach((d) => d.dispose());
       clearZones();
     },
