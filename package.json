@@ -1,0 +1,21 @@
+{
+  "name": "orca-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "orca-review": "bin/orca-review.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.1"
+  }
+}
