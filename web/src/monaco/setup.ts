@@ -73,6 +73,11 @@ monaco.editor.defineTheme('github-light', {
     'diffEditor.unchangedRegionForeground': '#0969DA',
     'diffEditor.diagonalFill': '#EAEEF2',
     'scrollbarSlider.background': '#8C959F33',
+    // 스크롤 시 상위 블록 줄을 고정하는 영역(sticky scroll): 본문과 구분되게
+    'editorStickyScroll.background': '#F6F8FA',
+    'editorStickyScrollGutter.background': '#F6F8FA',
+    'editorStickyScroll.border': '#D0D7DE',
+    'editorStickyScroll.shadow': '#1F232826',
   },
 });
 monaco.editor.setTheme('github-light');
