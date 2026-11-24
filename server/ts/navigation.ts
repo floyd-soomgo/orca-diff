@@ -27,7 +27,12 @@ async function withOpenFile<T>(wt: string, q: NavQuery, fn: (server: TsServer, f
   return server.exclusive(async () => {
     const fileContent = q.content ?? (await readFile(file, 'utf8'));
     await server.request('updateOpen', { openFiles: [{ file, fileContent, projectRootPath: wt }] });
-    return fn(server, file);
+    try {
+      return await fn(server, file);
+    } finally {
+      // 열어 둔 내용이 남으면 이후 다른 파일 질의가 옛 내용을 기준으로 답한다
+      await server.request('updateOpen', { closedFiles: [file] }).catch(() => undefined);
+    }
   });
 }
 

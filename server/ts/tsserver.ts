@@ -33,6 +33,7 @@ export class TsServer {
   #buffer = Buffer.alloc(0);
   #idle: NodeJS.Timeout | null = null;
   #queue: Promise<unknown> = Promise.resolve();
+  #dead = false;
 
   private constructor(wt: string) {
     this.wt = wt;
@@ -43,14 +44,19 @@ export class TsServer {
       stdio: ['pipe', 'pipe', 'ignore'],
     });
     this.#proc.stdout!.on('data', (chunk: Buffer) => this.#onData(chunk));
-    this.#proc.on('exit', () => {
+    const fail = (reason: string) => {
       for (const p of this.#pending.values()) {
         clearTimeout(p.timer);
-        p.reject(new Error('tsserver가 종료되었습니다'));
+        p.reject(new Error(reason));
       }
       this.#pending.clear();
+      this.#dead = true;
       if (TsServer.#instances.get(wt) === this) TsServer.#instances.delete(wt);
-    });
+    };
+    this.#proc.on('exit', () => fail('tsserver가 종료되었습니다'));
+    // 처리되지 않은 'error' 이벤트는 HTTP 서버까지 죽이므로 반드시 받는다
+    this.#proc.on('error', (e) => fail(`tsserver 실행 실패: ${e.message}`));
+    this.#proc.stdin!.on('error', (e) => fail(`tsserver 입력 실패: ${e.message}`));
     this.#touch();
   }
 
@@ -87,6 +93,7 @@ export class TsServer {
   }
 
   request<T>(command: string, args: object): Promise<T> {
+    if (this.#dead) return Promise.reject(new Error('tsserver가 종료되었습니다'));
     this.#touch();
     const seq = ++this.#seq;
     return new Promise<T>((resolve, reject) => {
@@ -107,6 +114,7 @@ export class TsServer {
   }
 
   dispose() {
+    this.#dead = true;
     if (this.#idle) clearTimeout(this.#idle);
     this.#proc.kill();
     if (TsServer.#instances.get(this.wt) === this) TsServer.#instances.delete(this.wt);

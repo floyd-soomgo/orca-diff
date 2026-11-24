@@ -26,21 +26,26 @@ export function CommitList({ onCommitContextMenu }: Props) {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [done, setDone] = useState(false);
   const loading = useRef(false);
+  const requestId = useRef(0);
   const anchor = useRef<number | null>(null);
   const effectiveBase = baseOnly && base && branch !== base ? base : null;
 
   const load = useCallback(
     async (skip: number) => {
-      if (!branch || loading.current) return;
+      if (!branch) return;
+      // 다음 페이지 로드는 중복 요청만 막고, 첫 페이지(브랜치·기준 변경)는 항상 새로 요청한다
+      if (skip > 0 && loading.current) return;
+      const id = ++requestId.current;
       loading.current = true;
       try {
         const page = await getCommits({ ref: branch, base: effectiveBase, skip, limit: PAGE });
+        if (id !== requestId.current) return; // 더 새 요청이 있으면 이 응답은 버린다
         setCommits((prev) => (skip === 0 ? page : [...prev, ...page]));
         setDone(page.length < PAGE);
       } catch (e) {
-        toast(`커밋 목록 실패: ${(e as Error).message}`, 'error');
+        if (id === requestId.current) toast(`커밋 목록 실패: ${(e as Error).message}`, 'error');
       } finally {
-        loading.current = false;
+        if (id === requestId.current) loading.current = false;
       }
     },
     [branch, effectiveBase, toast],

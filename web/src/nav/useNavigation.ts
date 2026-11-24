@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Location } from '../../../server/shared/types.ts';
 import { getDefinition, getReferences, type NavQuery } from '../api.ts';
 import { monaco } from '../monaco/setup.ts';
+import { navKeyAction } from './navKeys.ts';
 import { type NavEntry, useStore } from '../store.ts';
 
 export const TS_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
@@ -146,12 +147,14 @@ export function useGlobalNavKeys() {
     const back = () => useStore.getState().goBack(currentLocation);
     const forward = () => useStore.getState().goForward(currentLocation);
     const onKey = (e: KeyboardEvent) => {
-      const isBack = (e.metaKey && e.key === '[') || (e.altKey && e.key === 'ArrowLeft');
-      const isForward = (e.metaKey && e.key === ']') || (e.altKey && e.key === 'ArrowRight');
-      if (!isBack && !isForward) return;
+      const target = e.target as HTMLElement | null;
+      // Monaco 에디터도 내부적으로 textarea를 쓰므로 에디터 밖의 입력란만 제외한다
+      const inTextInput = !!target?.matches('input, textarea, select, [contenteditable]') && !target.closest('.monaco-editor');
+      const action = navKeyAction({ key: e.key, metaKey: e.metaKey, altKey: e.altKey, inTextInput });
+      if (!action) return;
       e.preventDefault();
       e.stopPropagation();
-      if (isBack) back();
+      if (action === 'back') back();
       else forward();
     };
     const onMouse = (e: MouseEvent) => {

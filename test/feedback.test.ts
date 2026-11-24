@@ -4,6 +4,11 @@ import { formatFeedback } from '../web/src/feedback/format.ts';
 import type { ReviewComment } from '../web/src/feedback/model.ts';
 
 describe('relocate', () => {
+  test('빈 줄 하나에 단 코멘트는 가장 가까운 빈 줄로 따라간다', () => {
+    expect(relocate('', 'a\n\nb\nc\n\nd', 4)).toEqual({ startLine: 5, endLine: 5 });
+    expect(relocate('', 'a\nb', 1)).toBeNull();
+  });
+
   const content = ['a', 'b', 'target1', 'target2', 'c', 'd', 'target1', 'target2', 'e'].join('\n');
 
   test('발췌가 밀리면 새 라인 범위를 찾는다', () => {
@@ -18,7 +23,7 @@ describe('relocate', () => {
 
   test('발췌가 바뀌어 없으면 null', () => {
     expect(relocate('target1\nchanged', content, 3)).toBeNull();
-    expect(relocate('', content, 3)).toBeNull();
+
   });
 });
 

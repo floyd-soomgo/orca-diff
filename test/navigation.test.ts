@@ -38,6 +38,18 @@ describe('navigation', () => {
     expect((await definition(fx.dir, { path: 'main.ts', line: 3, column: 22 }))[0]).toMatchObject({ path: 'util.ts' });
   });
 
+  test('content 오버라이드는 다른 파일 질의에 남지 않는다', async () => {
+    await definition(fx.dir, { path: 'main.ts', line: 6, column: 22, content: '\n\n\n' + MAIN });
+    const refs = await references(fx.dir, { path: 'util.ts', line: 1, column: 17 });
+    expect(refs.map((l) => `${l.path}:${l.line}`).sort()).toEqual(['main.ts:1', 'main.ts:3']);
+  });
+
+  test('dispose된 서버에 요청하면 프로세스를 죽이지 않고 reject한다', async () => {
+    const server = TsServer.forWorktree(fx.dir);
+    server.dispose();
+    await expect(server.request('configure', {})).rejects.toThrow();
+  });
+
   test('TS/JS가 아닌 파일은 거부한다', async () => {
     await expect(definition(fx.dir, { path: 'Main.kt', line: 1, column: 1 })).rejects.toThrow();
   });

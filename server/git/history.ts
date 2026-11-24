@@ -13,6 +13,7 @@ export async function listCommits(
     `--format=${LOG_FORMAT}`,
     `--skip=${opts.skip}`,
     `--max-count=${opts.limit}`,
+    '--end-of-options',
     range,
     '--',
   ]);

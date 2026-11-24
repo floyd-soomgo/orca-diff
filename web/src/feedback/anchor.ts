@@ -1,6 +1,5 @@
 // 코멘트를 단 코드 발췌를 새 내용에서 다시 찾는다. 여러 곳이면 hintLine에 가장 가까운 곳.
 export function relocate(excerpt: string, content: string, hintLine: number): { startLine: number; endLine: number } | null {
-  if (!excerpt) return null;
   const want = excerpt.split('\n');
   const lines = content.split('\n');
   let best: number | null = null;

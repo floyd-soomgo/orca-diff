@@ -82,8 +82,18 @@ describe('라우트', () => {
     expect(await res.json()).toEqual([]);
   });
 
+  test('한글이나 +가 든 브랜치 이름도 조회된다', async () => {
+    await fx.run(['branch', 'feat/한글']);
+    await fx.run(['branch', 'fix+x']);
+    expect((await get('/api/commits', { key: KEY, wt: fx.dir, ref: 'feat/한글' })).status).toBe(200);
+    expect((await get('/api/commits', { key: KEY, wt: fx.dir, ref: 'fix+x', base: 'main' })).status).toBe(200);
+    expect((await get('/api/commits', { key: KEY, wt: fx.dir, ref: '--output=/tmp/x' })).status).toBe(400);
+  });
+
   test('/api/branches는 base를 포함한다', async () => {
     const res = await get('/api/branches', { key: KEY, wt: fx.dir });
-    expect(await res.json()).toMatchObject({ current: 'main', local: ['main'], base: 'main' });
+    const body = await res.json();
+    expect(body).toMatchObject({ current: 'main', base: 'main' });
+    expect(body.local).toContain('main');
   });
 });

@@ -16,6 +16,7 @@ interface Ctx {
 }
 
 const LINE_PX = 19;
+const composers = new Map<string, Composer>();
 
 function isFor(c: ReviewComment, ctx: Ctx): c is LineComment {
   return c.target.kind === 'line' && c.target.path === ctx.change.path && sourceKey(c.target.source) === sourceKey(ctx.source);
@@ -41,7 +42,14 @@ interface Composer { side: Side; startLine: number; endLine: number; editId?: st
 export function attachComments(ctx: Ctx): monaco.IDisposable {
   const zoneIds: Record<Side, string[]> = { old: [], new: [] };
   const zoneNodes: Record<Side, HTMLElement[]> = { old: [], new: [] };
-  let composer: Composer | null = null;
+  // 입력 중인 코멘트는 탭 단위로 보관해 diff가 다시 로드(재부착)돼도 유지한다
+  const composerKey = `${sourceKey(ctx.source)}:${ctx.change.path}`;
+  let composer: Composer | null = composers.get(composerKey) ?? null;
+  const setComposer = (next: Composer | null) => {
+    composer = next;
+    if (next) composers.set(composerKey, next);
+    else composers.delete(composerKey);
+  };
 
   // view zone은 스크롤 폭 전체로 펼쳐지므로, 박스를 보이는 본문 폭에 맞춰야 Split 보기에서 반대쪽 패널에 가려지지 않는다
   const fitWidth = (side: Side, node: HTMLElement) => {
@@ -75,7 +83,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     const actions = el('div', 'comment-actions');
     const edit = el('button', '', '편집');
     edit.onclick = () => {
-      composer = { side: c.target.side, startLine: c.target.startLine, endLine: c.target.endLine, editId: c.id, body: c.body };
+      setComposer({ side: c.target.side, startLine: c.target.startLine, endLine: c.target.endLine, editId: c.id, body: c.body });
       render();
     };
     const del = el('button', '', '삭제');
@@ -105,11 +113,11 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
         const excerpt = ctx.contents[cmp.side].split('\n').slice(cmp.startLine - 1, cmp.endLine).join('\n');
         add({ kind: 'line', source: ctx.source, path: ctx.change.path, side: cmp.side, startLine: cmp.startLine, endLine: cmp.endLine, excerpt }, body);
       }
-      composer = null;
+      setComposer(null);
       render();
     };
     const cancel = () => {
-      composer = null;
+      setComposer(null);
       render();
     };
     textarea.addEventListener('keydown', (e) => {
@@ -162,7 +170,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
       const start = sel.startLineNumber;
       // 줄 단위 선택은 다음 줄 1열에서 끝나므로 한 줄 뺀다
       const end = sel.endColumn === 1 && sel.endLineNumber > start ? sel.endLineNumber - 1 : sel.endLineNumber;
-      composer = { side, startLine: start, endLine: end, body: '' };
+      setComposer({ side, startLine: start, endLine: end, body: '' });
       render();
     }),
   );

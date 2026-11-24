@@ -45,7 +45,7 @@ export function parseSource(raw: string | null): Source {
 
 // 옵션 주입(-로 시작)을 막기 위해 리비전 문자열을 제한한다
 function isRev(s: string): boolean {
-  return /^[\w./@^~-]+$/.test(s) && !s.startsWith('-');
+  return s.length > 0 && !s.startsWith('-') && !/[\s\0]/.test(s);
 }
 
 function requireRev(s: string | null, name: string): string {
