@@ -89,7 +89,6 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .status { font: 11px 'JetBrains Mono', Menlo, monospace; width: 12px; }
 .s-A { color: var(--added); } .s-M { color: var(--modified); } .s-D { color: var(--deleted); } .s-R { color: var(--renamed); }
 .status { font-weight: 600; }
-.row.file.s-D .name { text-decoration: line-through; }
 
 .editor-tabs { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .tab-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; flex: none; }
