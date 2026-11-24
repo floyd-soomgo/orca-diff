@@ -101,3 +101,13 @@ select, input[type='text'], input:not([type]), textarea { background: #45494a; b
 .toggle button.active { background: var(--selected); color: #fff; }
 .monaco-host { flex: 1; min-height: 0; }
 .reveal-line { background: rgba(74, 136, 199, 0.35); }
+
+.nav-link { text-decoration: underline; color: #589df6 !important; cursor: pointer; }
+.usages-popup { position: fixed; z-index: 900; width: 520px; max-height: 320px; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); }
+.popup-title { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--dim); }
+.popup-list { overflow: auto; }
+.usages-popup .row, .usages-panel .row { gap: 10px; }
+.loc { color: #ddd; flex: none; }
+.preview { color: var(--dim); overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; }
+.row.selected .preview { color: #eee; }
+button.link { border: none; background: none; color: #589df6; padding: 0; }

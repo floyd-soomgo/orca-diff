@@ -1,4 +1,4 @@
-import { DiffTab } from './diff/DiffTab.tsx';
+import { type DiffAttachContext, DiffTab } from './diff/DiffTab.tsx';
 import { FileTab } from './diff/FileTab.tsx';
 import { BottomPanel } from './layout/BottomPanel.tsx';
 import { ChangesTree } from './layout/ChangesTree.tsx';
@@ -6,10 +6,29 @@ import { CommitList } from './layout/CommitList.tsx';
 import { EditorTabs } from './layout/EditorTabs.tsx';
 import { Splitter, usePanelSize } from './layout/Splitter.tsx';
 import { TopBar } from './layout/TopBar.tsx';
+import { FindUsagesPanel } from './nav/FindUsagesPanel.tsx';
+import { UsagesPopup } from './nav/UsagesPopup.tsx';
+import { attachNavigation, useGlobalNavKeys } from './nav/useNavigation.ts';
+import { monaco } from './monaco/setup.ts';
 import { type Tab, useStore } from './store.ts';
 
+// diff에서는 수정본(오른쪽)에서만 탐색한다. 워킹트리 unstaged가 아니면 diff에 보이는 내용 기준으로 질의한다.
+function attachDiff(ctx: DiffAttachContext): monaco.IDisposable | void {
+  if (ctx.change.status === 'D') return;
+  const override = ctx.source.kind === 'unstaged' ? undefined : ctx.pair.modified;
+  return attachNavigation(ctx.editors.modified, { path: ctx.change.path, contentOverride: () => override });
+}
+
+function attachFile(editor: monaco.editor.ICodeEditor, path: string) {
+  return attachNavigation(editor, { path, contentOverride: () => undefined });
+}
+
 function renderTab(tab: Tab) {
-  return tab.kind === 'diff' ? <DiffTab source={tab.source} change={tab.change} /> : <FileTab path={tab.path} reveal={tab.reveal} />;
+  return tab.kind === 'diff' ? (
+    <DiffTab source={tab.source} change={tab.change} attach={attachDiff} />
+  ) : (
+    <FileTab path={tab.path} reveal={tab.reveal} attach={attachFile} />
+  );
 }
 
 function Toasts() {
@@ -28,6 +47,7 @@ export function App() {
   const [commitsHeight, setCommitsHeight] = usePanelSize('commits', 320);
   const [bottomHeight, setBottomHeight] = usePanelSize('bottom', 220);
   const bottomOpen = useStore((s) => s.bottomPanel !== null);
+  useGlobalNavKeys();
 
   return (
     <div className="app">
@@ -45,10 +65,11 @@ export function App() {
           <EditorTabs renderTab={renderTab} />
           {bottomOpen && <Splitter direction="horizontal" size={bottomHeight} onResize={setBottomHeight} invert />}
           <div style={{ height: bottomOpen ? bottomHeight : 'auto', display: 'flex' }}>
-            <BottomPanel usages={<div className="empty">Alt+F7로 사용처를 찾으세요</div>} feedback={<div className="empty">피드백 없음</div>} feedbackCount={0} />
+            <BottomPanel usages={<FindUsagesPanel />} feedback={<div className="empty">피드백 없음</div>} feedbackCount={0} />
           </div>
         </div>
       </div>
+      <UsagesPopup />
       <Toasts />
     </div>
   );

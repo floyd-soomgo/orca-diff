@@ -7,7 +7,7 @@ export type Tab =
 
 export type CommitSelection = { mode: 'worktree' } | { mode: 'commits'; shas: string[] }; // shas: 최신 → 오래된 순
 export type BottomPanel = 'usages' | 'feedback' | null;
-export interface NavEntry { path: string; line: number; column: number }
+export interface NavEntry { path: string; line: number; column: number; tabId?: string | null }
 export interface Toast { id: number; message: string; tone: 'info' | 'error' }
 
 export const sourceKey = (s: Source) => (s.kind === 'commits' ? `commits:${s.from}..${s.to}` : s.kind);
@@ -41,6 +41,7 @@ interface State {
   pushNav(from: NavEntry): void;
   goBack(current: NavEntry | null): void;
   goForward(current: NavEntry | null): void;
+  revealNav(entry: NavEntry): void;
 }
 
 let toastSeq = 0;
@@ -104,14 +105,20 @@ export const useStore = create<State>((set, get) => ({
     const target = navBack.at(-1);
     if (!target) return;
     set({ navBack: navBack.slice(0, -1), navForward: current ? [...navForward, current] : navForward });
-    get().openFile(target.path, { line: target.line, column: target.column });
+    get().revealNav(target);
+  },
+  // 기록된 탭(예: diff 탭)이 아직 열려 있으면 그 탭으로, 아니면 파일 탭으로 돌아간다
+  revealNav: (entry) => {
+    const tab = get().tabs.find((t) => t.id === entry.tabId);
+    if (tab && tab.kind === 'diff') set({ activeTabId: tab.id });
+    else get().openFile(entry.path, { line: entry.line, column: entry.column });
   },
   goForward: (current) => {
     const { navBack, navForward } = get();
     const target = navForward.at(-1);
     if (!target) return;
     set({ navForward: navForward.slice(0, -1), navBack: current ? [...navBack, current] : navBack });
-    get().openFile(target.path, { line: target.line, column: target.column });
+    get().revealNav(target);
   },
 }));
 

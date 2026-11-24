@@ -6,7 +6,7 @@ import { useStore } from '../store.ts';
 interface Props {
   path: string;
   reveal?: { line: number; column: number };
-  attach?: (editor: monaco.editor.ICodeEditor) => monaco.IDisposable | void;
+  attach?: (editor: monaco.editor.ICodeEditor, path: string) => monaco.IDisposable | void;
 }
 
 export function FileTab({ path, reveal, attach }: Props) {
@@ -33,7 +33,7 @@ export function FileTab({ path, reveal, attach }: Props) {
       model: monaco.editor.createModel('', languageOf(path)),
     });
     editorRef.current = editor;
-    const disposable = attach?.(editor);
+    const disposable = attach?.(editor, path);
     return () => {
       disposable?.dispose();
       const model = editor.getModel();
