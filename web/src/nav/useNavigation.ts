@@ -37,8 +37,14 @@ interface NavContext {
   contentOverride: () => string | undefined;
 }
 
-export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavContext): monaco.IDisposable {
-  if (!TS_EXT.test(ctx.path)) return { dispose() {} };
+export interface NavHandle extends monaco.IDisposable {
+  enabled: boolean; // TS/JS 파일일 때만
+  goToDeclaration(pos: monaco.IPosition): void;
+  findUsages(pos: monaco.IPosition): void;
+}
+
+export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavContext): NavHandle {
+  if (!TS_EXT.test(ctx.path)) return { enabled: false, dispose() {}, goToDeclaration() {}, findUsages() {} };
   const { toast, setBottomPanel } = useStore.getState();
   const { setPopup, setUsages } = useNavUi.getState();
   const linkDeco = editor.createDecorationsCollection();
@@ -126,7 +132,7 @@ export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavCont
         e.preventDefault();
         e.stopPropagation();
         goToDeclaration(pos);
-      } else if (e.altKey && e.keyCode === monaco.KeyCode.F7) {
+      } else if (e.altKey && (e.keyCode === monaco.KeyCode.F7 || e.code === 'F7')) {
         e.preventDefault();
         e.stopPropagation();
         findUsages(pos);
@@ -134,6 +140,9 @@ export function attachNavigation(editor: monaco.editor.ICodeEditor, ctx: NavCont
     }),
   ];
   return {
+    enabled: true,
+    goToDeclaration,
+    findUsages,
     dispose() {
       linkDeco.clear();
       disposables.forEach((d) => d.dispose());

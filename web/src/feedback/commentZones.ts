@@ -44,7 +44,11 @@ function isolate(node: HTMLElement) {
 interface Composer { side: Side; startLine: number; endLine: number; editId?: string; body: string }
 
 // diff의 양쪽 에디터에 라인 코멘트를 그리고, 라인 번호 클릭/드래그로 새 코멘트를 받는다
-export function attachComments(ctx: Ctx): monaco.IDisposable {
+export interface CommentsHandle extends monaco.IDisposable {
+  openComposer(side: Side, startLine: number, endLine: number): void;
+}
+
+export function attachComments(ctx: Ctx): CommentsHandle {
   const sides: Side[] = ctx.sides ?? ['old', 'new'];
   const zoneIds: Record<Side, string[]> = { old: [], new: [] };
   const zoneNodes: Record<Side, HTMLElement[]> = { old: [], new: [] };
@@ -255,6 +259,11 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
 
 
   return {
+    openComposer(side, startLine, endLine) {
+      if (!sides.includes(side)) return;
+      setComposer({ side, startLine, endLine, body: '' });
+      render();
+    },
     dispose() {
       unsubscribe();
       gutterListeners.forEach((d) => d.dispose());

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Change, Source } from '../../../server/shared/types.ts';
 import { getChanges } from '../api.ts';
+import { copyText, useContextMenu } from '../contextMenu.tsx';
+import { useFeedback } from '../feedback/storage.ts';
 import { commitsSource, useStore } from '../store.ts';
 
 const POLL_MS = 3000;
@@ -17,7 +19,19 @@ function groupByDir(changes: Change[]): [string, Change[]][] {
 }
 
 export function ChangesTree() {
-  const { selection, openDiff, refreshTick, toast } = useStore();
+  const { selection, openDiff, openFile, refreshTick, toast } = useStore();
+
+  const openFileMenu = (source: Source, c: Change, e: React.MouseEvent) => {
+    e.preventDefault();
+    useContextMenu.getState().open(e.clientX, e.clientY, [
+      { label: 'diff 열기', onSelect: () => openDiff(source, c) },
+      { label: '현재 워크트리 파일 열기', disabled: source.kind === 'unstaged' && c.status === 'D', onSelect: () => openFile(c.path) },
+      'separator',
+      { label: '파일에 코멘트', onSelect: () => useFeedback.getState().openDialog({ kind: 'file', source, path: c.path }) },
+      'separator',
+      { label: '경로 복사', onSelect: () => copyText(c.path, '경로') },
+    ]);
+  };
   const [groups, setGroups] = useState<Group[]>([]);
   const lastJson = useRef('');
 
@@ -74,6 +88,7 @@ export function ChangesTree() {
                     key={c.path}
                     className={`row file s-${c.status} ${dir ? 'indented' : ''}`}
                     onClick={() => openDiff(g.source, c)}
+                    onContextMenu={(e) => openFileMenu(g.source, c, e)}
                     title={c.oldPath ? `${c.oldPath} → ${c.path}` : c.path}
                   >
                     <span className="status">{c.status}</span>

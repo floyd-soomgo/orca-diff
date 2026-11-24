@@ -6,16 +6,58 @@ import { CommitList } from './layout/CommitList.tsx';
 import { EditorTabs } from './layout/EditorTabs.tsx';
 import { Splitter, usePanelSize } from './layout/Splitter.tsx';
 import { TopBar } from './layout/TopBar.tsx';
-import { useState } from 'react';
-import type { Commit } from '../../server/shared/types.ts';
-import { attachComments } from './feedback/commentZones.ts';
+import { ContextMenu, copyText, type MenuItem, useContextMenu } from './contextMenu.tsx';
+import { attachComments, type CommentsHandle } from './feedback/commentZones.ts';
 import { CommentDialog, FeedbackPanel } from './feedback/FeedbackPanel.tsx';
 import { useFeedback } from './feedback/storage.ts';
 import { FindUsagesPanel } from './nav/FindUsagesPanel.tsx';
 import { UsagesPopup } from './nav/UsagesPopup.tsx';
-import { attachNavigation, useGlobalNavKeys } from './nav/useNavigation.ts';
+import { attachNavigation, type NavHandle, useGlobalNavKeys } from './nav/useNavigation.ts';
 import { monaco } from './monaco/setup.ts';
 import { type Tab, useStore } from './store.ts';
+
+interface EditorMenuOptions {
+  path: string;
+  nav?: NavHandle;
+  comments?: { handle: CommentsHandle; side: 'old' | 'new' };
+  onFileComment?: () => void;
+}
+
+// 에디터 우클릭: Monaco 기본 메뉴 대신 앱 메뉴(탐색·코멘트·복사)
+function attachEditorMenu(editor: monaco.editor.ICodeEditor, opts: EditorMenuOptions): monaco.IDisposable {
+  return editor.onContextMenu((e) => {
+    e.event.preventDefault();
+    e.event.stopPropagation();
+    const pos = e.target.position ?? editor.getPosition();
+    if (!pos) return;
+    const sel = editor.getSelection();
+    const inSelection = !!sel && !sel.isEmpty() && sel.containsPosition(pos);
+    if (!inSelection) editor.setPosition(pos);
+    const start = inSelection ? sel.startLineNumber : pos.lineNumber;
+    const end = inSelection && sel.endColumn === 1 && sel.endLineNumber > start ? sel.endLineNumber - 1 : inSelection ? sel.endLineNumber : pos.lineNumber;
+    const range = start === end ? `${start}` : `${start}-${end}`;
+
+    const items: MenuItem[] = [];
+    if (opts.nav?.enabled) {
+      items.push(
+        { label: '선언으로 이동', shortcut: '⌘B', onSelect: () => opts.nav!.goToDeclaration(pos) },
+        { label: '사용처 찾기', shortcut: 'fn⌥F7', onSelect: () => opts.nav!.findUsages(pos) },
+        'separator',
+      );
+    }
+    if (opts.comments) {
+      const { handle, side } = opts.comments;
+      items.push({ label: start === end ? `${start}행에 코멘트` : `선택한 ${start}-${end}행에 코멘트`, onSelect: () => handle.openComposer(side, start, end) });
+    }
+    if (opts.onFileComment) items.push({ label: '파일 전체에 코멘트', onSelect: opts.onFileComment });
+    if (opts.comments || opts.onFileComment) items.push('separator');
+    items.push(
+      { label: '경로:줄 복사', onSelect: () => copyText(`${opts.path}:${range}`, '경로') },
+      { label: '경로 복사', onSelect: () => copyText(opts.path, '경로') },
+    );
+    useContextMenu.getState().open(e.event.posx, e.event.posy, items);
+  });
+}
 
 // diff에서는 수정본(오른쪽)에서만 탐색한다. 워킹트리 unstaged가 아니면 diff에 보이는 내용 기준으로 질의한다.
 function attachDiff(ctx: DiffAttachContext): monaco.IDisposable {
@@ -26,13 +68,23 @@ function attachDiff(ctx: DiffAttachContext): monaco.IDisposable {
     contents: { old: ctx.pair.original, new: ctx.pair.modified },
     sides: ctx.single ? [ctx.single] : undefined,
   });
-  if (ctx.change.status === 'D') return comments;
   const override = ctx.source.kind === 'unstaged' ? undefined : ctx.pair.modified;
-  const nav = attachNavigation(ctx.editors.modified, { path: ctx.change.path, contentOverride: () => override });
+  const nav = ctx.change.status === 'D' ? undefined : attachNavigation(ctx.editors.modified, { path: ctx.change.path, contentOverride: () => override });
+  const onFileComment = () => useFeedback.getState().openDialog({ kind: 'file', source: ctx.source, path: ctx.change.path });
+  const sides = ctx.single ? [ctx.single] : (['old', 'new'] as const);
+  const menus = sides.map((side) =>
+    attachEditorMenu(side === 'new' ? ctx.editors.modified : ctx.editors.original, {
+      path: side === 'old' ? (ctx.change.oldPath ?? ctx.change.path) : ctx.change.path,
+      nav: side === 'new' ? nav : undefined,
+      comments: { handle: comments, side },
+      onFileComment,
+    }),
+  );
   return {
     dispose() {
       comments.dispose();
-      nav.dispose();
+      nav?.dispose();
+      menus.forEach((m) => m.dispose());
     },
   };
 }
@@ -53,28 +105,15 @@ function fileCommentButton(tab: Tab) {
   );
 }
 
-// 커밋 우클릭 메뉴(앱 자체 메뉴)
-function CommitMenu({ menu, onClose }: { menu: { x: number; y: number; commit: Commit } | null; onClose: () => void }) {
-  if (!menu) return null;
-  return (
-    <div className="dialog-backdrop transparent" onMouseDown={onClose}>
-      <div className="context-menu" style={{ left: menu.x, top: menu.y }} onMouseDown={(e) => e.stopPropagation()}>
-        <div
-          className="row"
-          onClick={() => {
-            useFeedback.getState().openDialog({ kind: 'commit', sha: menu.commit.sha, subject: menu.commit.subject });
-            onClose();
-          }}
-        >
-          커밋에 코멘트 달기
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function attachFile(editor: monaco.editor.ICodeEditor, path: string) {
-  return attachNavigation(editor, { path, contentOverride: () => undefined });
+function attachFile(editor: monaco.editor.ICodeEditor, path: string): monaco.IDisposable {
+  const nav = attachNavigation(editor, { path, contentOverride: () => undefined });
+  const menu = attachEditorMenu(editor, { path, nav });
+  return {
+    dispose() {
+      nav.dispose();
+      menu.dispose();
+    },
+  };
 }
 
 function renderTab(tab: Tab) {
@@ -103,7 +142,6 @@ export function App() {
   const bottomOpen = useStore((s) => s.bottomPanel !== null);
   useGlobalNavKeys();
   const unsentCount = useFeedback((s) => s.comments.filter((c) => !c.sentAt).length);
-  const [menu, setMenu] = useState<{ x: number; y: number; commit: Commit } | null>(null);
 
   return (
     <div className="app">
@@ -111,7 +149,7 @@ export function App() {
       <div className="main">
         <div className="left-pane" style={{ width: leftWidth }}>
           <div style={{ height: commitsHeight, display: 'flex' }}>
-            <CommitList onCommitContextMenu={(commit, e) => setMenu({ x: e.clientX, y: e.clientY, commit })} />
+            <CommitList />
           </div>
           <Splitter direction="horizontal" size={commitsHeight} onResize={setCommitsHeight} />
           <ChangesTree />
@@ -127,7 +165,7 @@ export function App() {
       </div>
       <UsagesPopup />
       <CommentDialog />
-      <CommitMenu menu={menu} onClose={() => setMenu(null)} />
+      <ContextMenu />
       <Toasts />
     </div>
   );

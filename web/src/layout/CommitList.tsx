@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Commit } from '../../../server/shared/types.ts';
 import { getCommits } from '../api.ts';
+import { copyText, useContextMenu } from '../contextMenu.tsx';
 import { useFeedback } from '../feedback/storage.ts';
 import { useStore } from '../store.ts';
 
@@ -18,11 +19,17 @@ export function relativeTime(epochSec: number): string {
   return '방금 전';
 }
 
-interface Props {
-  onCommitContextMenu?: (commit: Commit, e: React.MouseEvent) => void;
+function openCommitMenu(c: Commit, e: React.MouseEvent) {
+  e.preventDefault();
+  useContextMenu.getState().open(e.clientX, e.clientY, [
+    { label: '커밋에 코멘트', onSelect: () => useFeedback.getState().openDialog({ kind: 'commit', sha: c.sha, subject: c.subject }) },
+    'separator',
+    { label: '해시 복사', onSelect: () => copyText(c.sha, '해시') },
+    { label: '메시지 복사', onSelect: () => copyText(c.body ? `${c.subject}\n\n${c.body}` : c.subject, '메시지') },
+  ]);
 }
 
-export function CommitList({ onCommitContextMenu }: Props) {
+export function CommitList() {
   const { branch, base, baseOnly, filter, selection, select, refreshTick, toast } = useStore();
   const [commits, setCommits] = useState<Commit[]>([]);
   const [done, setDone] = useState(false);
@@ -100,11 +107,7 @@ export function CommitList({ onCommitContextMenu }: Props) {
             key={c.sha}
             className={`row ${selectedShas.includes(c.sha) ? 'selected' : ''}`}
             onClick={(e) => onClick(idx, e)}
-            onContextMenu={(e) => {
-              if (!onCommitContextMenu) return;
-              e.preventDefault();
-              onCommitContextMenu(c, e);
-            }}
+            onContextMenu={(e) => openCommitMenu(c, e)}
           >
             <span className="dot">●</span>
             <span className="subject">{c.subject}</span>
