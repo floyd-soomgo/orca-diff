@@ -13,6 +13,8 @@ interface Ctx {
   change: Change;
   editors: Record<Side, monaco.editor.ICodeEditor>;
   contents: Record<Side, string>;
+  // 새 파일/삭제 파일처럼 한쪽만 보여줄 때 그 쪽만(기본: 양쪽)
+  sides?: Side[];
 }
 
 const composers = new Map<string, Composer>();
@@ -43,6 +45,7 @@ interface Composer { side: Side; startLine: number; endLine: number; editId?: st
 
 // diff의 양쪽 에디터에 라인 코멘트를 그리고, 라인 번호 클릭/드래그로 새 코멘트를 받는다
 export function attachComments(ctx: Ctx): monaco.IDisposable {
+  const sides: Side[] = ctx.sides ?? ['old', 'new'];
   const zoneIds: Record<Side, string[]> = { old: [], new: [] };
   const zoneNodes: Record<Side, HTMLElement[]> = { old: [], new: [] };
   // 입력 중인 코멘트는 탭 단위로 보관해 diff가 다시 로드(재부착)돼도 유지한다
@@ -62,7 +65,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
   };
 
   const clearZones = () => {
-    for (const side of ['old', 'new'] as const) {
+    for (const side of sides) {
       ctx.editors[side].changeViewZones((acc) => zoneIds[side].forEach((id) => acc.removeZone(id)));
       zoneIds[side] = [];
       zoneNodes[side] = [];
@@ -148,7 +151,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
   function render() {
     clearZones();
     for (const c of useFeedback.getState().comments) {
-      if (!isFor(c, ctx) || c.stale || c.id === composer?.editId) continue;
+      if (!isFor(c, ctx) || c.stale || c.id === composer?.editId || !sides.includes(c.target.side)) continue;
       addZone(c.target.side, c.target.endLine, commentNode(c), COMMENT_BASE_PX + BODY_LINE_PX * Math.max(1, c.body.split('\n').length));
     }
     if (composer) addZone(composer.side, composer.endLine, composerNode(composer), COMPOSER_PX);
@@ -215,7 +218,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     render();
   };
 
-  const gutterListeners = (['old', 'new'] as const).flatMap((side) => {
+  const gutterListeners = sides.flatMap((side) => {
     const editor = ctx.editors[side];
     return [
       editor.onMouseDown((e) => {
@@ -241,7 +244,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
     ];
   });
 
-  const layoutListeners = (['old', 'new'] as const).map((side) =>
+  const layoutListeners = sides.map((side) =>
     ctx.editors[side].onDidLayoutChange(() => zoneNodes[side].forEach((node) => fitWidth(side, node))),
   );
 
@@ -257,7 +260,7 @@ export function attachComments(ctx: Ctx): monaco.IDisposable {
       gutterListeners.forEach((d) => d.dispose());
       window.removeEventListener('mouseup', finishDrag);
       window.removeEventListener('mousemove', onDragMove);
-      for (const side of ['old', 'new'] as const) {
+      for (const side of sides) {
         hoverDeco[side].clear();
         rangeDeco[side].clear();
         ctx.editors[side].getDomNode()?.classList.remove('gutter-dragging');

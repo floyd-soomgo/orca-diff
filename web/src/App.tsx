@@ -24,6 +24,7 @@ function attachDiff(ctx: DiffAttachContext): monaco.IDisposable {
     change: ctx.change,
     editors: { old: ctx.editors.original, new: ctx.editors.modified },
     contents: { old: ctx.pair.original, new: ctx.pair.modified },
+    sides: ctx.single ? [ctx.single] : undefined,
   });
   if (ctx.change.status === 'D') return comments;
   const override = ctx.source.kind === 'unstaged' ? undefined : ctx.pair.modified;

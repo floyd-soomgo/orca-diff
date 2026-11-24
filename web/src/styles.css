@@ -183,3 +183,12 @@ button.primary:hover { background: #1c8139; }
 /* 거터 드래그 중에는 텍스트 선택 색을 숨겨 코멘트 범위와 구분한다 */
 .monaco-editor.gutter-dragging .selected-text,
 .monaco-editor.gutter-dragging .current-line { background: transparent !important; border: none !important; }
+
+/* 새 파일/삭제 파일 단일 보기 */
+.monaco-editor .full-insert-line { background: #dafbe1; }
+.monaco-editor .full-insert-margin { background: #ccffd8; }
+.monaco-editor .full-delete-line { background: #ffebe9; }
+.monaco-editor .full-delete-margin { background: #ffd7d5; }
+.file-badge { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 12px; border: 1px solid; }
+.file-badge.new { color: var(--added); border-color: var(--added); background: #dafbe1; }
+.file-badge.old { color: var(--deleted); border-color: var(--deleted); background: #ffebe9; }

@@ -39,6 +39,8 @@ export interface DiffEditors {
 
 export interface DiffAttachContext {
   editors: DiffEditors;
+  // 새 파일('new')/삭제 파일('old')은 한쪽만 보여주며 editors의 두 값이 같은 에디터다
+  single?: 'old' | 'new';
   pair: FilePair;
   source: Source;
   change: Change;
@@ -54,6 +56,9 @@ interface Props {
 export function DiffTab({ source, change, attach }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
+  const singleRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  // 새 파일/삭제 파일은 한쪽이 비어 있어 diff로 그리면 '빈 줄 1개 → 전체' 변경으로 보인다. 한쪽만 그린다.
+  const single = change.status === 'A' ? 'new' : change.status === 'D' ? 'old' : undefined;
   const [pair, setPair] = useState<FilePair | null>(null);
   const { sideBySide, hunksOnly, set } = usePrefs();
   const refreshTick = useStore((s) => s.refreshTick);
@@ -87,7 +92,23 @@ export function DiffTab({ source, change, attach }: Props) {
   // 에디터 생성
   const showEditor = pair !== null && !pair.binary && !pair.tooLarge;
   useEffect(() => {
-    if (!showEditor || !host.current) return;
+    if (!showEditor || !host.current || !single) return;
+    const editor = monaco.editor.create(host.current, {
+      ...READONLY_OPTIONS,
+      ...editorFontOptions(useFontSettings.getState()),
+      model: monaco.editor.createModel('', languageOf(change.path)),
+    });
+    singleRef.current = editor;
+    return () => {
+      const model = editor.getModel();
+      editor.dispose();
+      model?.dispose();
+      singleRef.current = null;
+    };
+  }, [showEditor, single, change.path]);
+
+  useEffect(() => {
+    if (!showEditor || !host.current || single) return;
     const editor = monaco.editor.createDiffEditor(host.current, {
       ...READONLY_OPTIONS,
       ...editorFontOptions(useFontSettings.getState()),
@@ -110,9 +131,32 @@ export function DiffTab({ source, change, attach }: Props) {
       model?.modified.dispose();
       editorRef.current = null;
     };
-  }, [showEditor, change.path]);
+  }, [showEditor, single, change.path]);
 
   // 내용 반영 + 부착(탐색·코멘트)
+  useEffect(() => {
+    const ed = singleRef.current;
+    if (!single || !ed || !pair) return;
+    const content = single === 'new' ? pair.modified : pair.original;
+    if (ed.getModel()?.getValue() !== content) ed.getModel()?.setValue(content);
+    const lineCount = ed.getModel()?.getLineCount() ?? 1;
+    const deco = ed.createDecorationsCollection([
+      {
+        range: new monaco.Range(1, 1, lineCount, 1),
+        options: {
+          isWholeLine: true,
+          className: single === 'new' ? 'full-insert-line' : 'full-delete-line',
+          marginClassName: single === 'new' ? 'full-insert-margin' : 'full-delete-margin',
+        },
+      },
+    ]);
+    const disposable = attach?.({ editors: { original: ed, modified: ed }, single, pair, source, change });
+    return () => {
+      deco.clear();
+      disposable?.dispose();
+    };
+  }, [pair, attach, source, change, showEditor, single]);
+
   useEffect(() => {
     const editor = editorRef.current;
     const model = editor?.getModel();
@@ -130,8 +174,9 @@ export function DiffTab({ source, change, attach }: Props) {
 
   useEffect(() => {
     editorRef.current?.updateOptions(editorFontOptions(font));
+    singleRef.current?.updateOptions(editorFontOptions(font));
     monaco.editor.remeasureFonts();
-  }, [font.family, font.size, showEditor]);
+  }, [font.family, font.size, showEditor, single]);
 
   useEffect(() => {
     editorRef.current?.updateOptions({ renderSideBySide: sideBySide, hideUnchangedRegions: { enabled: hunksOnly } });
@@ -144,6 +189,9 @@ export function DiffTab({ source, change, attach }: Props) {
           {change.oldPath ? `${change.oldPath} → ` : ''}
           {change.path}
         </span>
+        {single && <span className={`file-badge ${single}`}>{single === 'new' ? '새 파일' : '삭제된 파일'}</span>}
+        {!single && (
+        <>
         <div className="toggle">
           <button className={sideBySide ? 'active' : ''} onClick={() => set({ sideBySide: true })}>Split</button>
           <button className={!sideBySide ? 'active' : ''} onClick={() => set({ sideBySide: false })}>Unified</button>
@@ -152,6 +200,8 @@ export function DiffTab({ source, change, attach }: Props) {
           <button className={hunksOnly ? 'active' : ''} onClick={() => set({ hunksOnly: true })}>변경 뭉치</button>
           <button className={!hunksOnly ? 'active' : ''} onClick={() => set({ hunksOnly: false })}>전체</button>
         </div>
+        </>
+        )}
       </div>
       {pair?.binary && <div className="editor-empty">바이너리 파일은 diff를 표시하지 않습니다</div>}
       {pair?.tooLarge && <div className="editor-empty">파일이 너무 커서(1 MiB 초과) diff를 표시하지 않습니다</div>}

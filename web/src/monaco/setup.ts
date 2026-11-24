@@ -97,6 +97,7 @@ export const READONLY_OPTIONS = {
   links: false,
   hover: { enabled: 'off' },
   glyphMargin: true,
+  folding: false,
 } satisfies monaco.editor.IEditorOptions;
 
 export { monaco };

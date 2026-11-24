@@ -29,8 +29,28 @@ async function ensureServer(key: string): Promise<void> {
   throw new Error(`서버가 시작되지 않았습니다. ${join(CONFIG_DIR, 'server.log')}를 확인하세요 (포트 ${PORT}).`);
 }
 
+// 이 워크트리에 이미 열린 orca-review 탭이 있으면 그 탭의 페이지 id
+async function findExistingTab(wt: string): Promise<{ page: string; url: string } | null> {
+  try {
+    const out = JSON.parse((await exec('orca', ['tab', 'list', '--worktree', `path:${wt}`, '--json'])).stdout);
+    const tabs: { url?: string; browserPageId?: string }[] = out?.result?.tabs ?? [];
+    const tab = tabs.find((t) => t.url?.startsWith(`http://127.0.0.1:${PORT}/`) && t.browserPageId);
+    return tab ? { page: tab.browserPageId!, url: tab.url! } : null;
+  } catch {
+    return null;
+  }
+}
+
 async function openUrl(url: string, wt: string): Promise<void> {
   try {
+    const existing = await findExistingTab(wt);
+    if (existing) {
+      await exec('orca', ['tab', 'switch', '--page', existing.page, '--worktree', `path:${wt}`, '--focus']);
+      // 탭이 다른 워크트리를 보고 있으면 이 워크트리로 이동한다(탭 안의 경로는 그대로 두고)
+      const shown = new URL(existing.url).searchParams.get('wt');
+      if (shown !== wt) await exec('orca', ['goto', '--url', url, '--page', existing.page]);
+      return;
+    }
     await exec('orca', ['tab', 'create', '--url', url, '--worktree', `path:${wt}`, '--focus']);
     return;
   } catch {
