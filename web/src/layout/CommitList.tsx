@@ -38,6 +38,8 @@ function openCommitMenu(c: Commit, e: React.MouseEvent) {
 export function CommitList() {
   const { branch, base, baseOnly, filter, setFilter, selection, select, refreshTick, toast } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  // 상세를 × 로 닫은 커밋(다시 고르면 다시 보인다)
+  const [closedSha, setClosedSha] = useState<string | null>(null);
   const [commits, setCommits] = useState<Commit[]>([]);
   const [done, setDone] = useState(false);
   const loading = useRef(false);
@@ -79,6 +81,7 @@ export function CommitList() {
   const selectedShas = selection.mode === 'commits' ? selection.shas : [];
 
   const onClick = (idx: number, e: React.MouseEvent) => {
+    setClosedSha(null);
     if (e.shiftKey && anchor.current !== null) {
       const [a, b] = [Math.min(anchor.current, idx), Math.max(anchor.current, idx)];
       select({ mode: 'commits', shas: visible.slice(a, b + 1).map((c) => c.sha) });
@@ -168,9 +171,16 @@ export function CommitList() {
         ))}
         {visible.length === 0 && <div className="empty">{commits.length === 0 ? '커밋이 없습니다' : '검색 결과가 없습니다'}</div>}
       </div>
-      {detail && (
-        <details className="commit-detail" open key={detail.sha}>
-          <summary>{detail.sha.slice(0, 10)} · {detail.author} &lt;{detail.email}&gt;</summary>
+      {detail && detail.sha !== closedSha && (
+        <div className="commit-detail" key={detail.sha}>
+          <div className="commit-detail-header">
+            <span className="commit-detail-who">
+              {detail.sha.slice(0, 10)} · {detail.author} &lt;{detail.email}&gt;
+            </span>
+            <button className="icon-button small" title="커밋 상세 닫기" aria-label="커밋 상세 닫기" onClick={() => setClosedSha(detail.sha)}>
+              ×
+            </button>
+          </div>
           <pre>{detail.subject}{detail.body ? `\n\n${detail.body}` : ''}</pre>
           <div className="commit-detail-footer">
             <span className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</span>
@@ -178,7 +188,7 @@ export function CommitList() {
               💬 커밋에 코멘트
             </button>
           </div>
-        </details>
+        </div>
       )}
     </div>
   );

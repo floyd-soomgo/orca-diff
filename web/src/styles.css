@@ -228,3 +228,6 @@ button.primary:hover { background: #1c8139; }
 .tab-bar::-webkit-scrollbar { display: none; }
 .tab { flex: none; }
 .toggle-single.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.commit-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.commit-detail-who { user-select: text; word-break: break-all; }
+.commit-detail pre, .commit-detail .meta { user-select: text; }
