@@ -21,7 +21,14 @@ export async function orcaAvailable(): Promise<boolean> {
 }
 
 export async function listTerminals(wt: string): Promise<Terminal[]> {
-  const out = JSON.parse(await orca(['terminal', 'list', '--worktree', `path:${wt}`, '--json']));
+  let raw: string;
+  try {
+    raw = await orca(['terminal', 'list', '--worktree', `path:${wt}`, '--json']);
+  } catch {
+    // Orca가 관리하지 않는 워크트리면 실패한다 → 보낼 터미널 없음
+    return [];
+  }
+  const out = JSON.parse(raw);
   const terminals: { handle: string; title?: string }[] = out?.result?.terminals ?? [];
   return terminals.map((t) => ({ handle: t.handle, title: t.title ?? t.handle }));
 }

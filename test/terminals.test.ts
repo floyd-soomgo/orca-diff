@@ -42,6 +42,14 @@ describe('orca 터미널', () => {
     expect(await loggedArgs()).toEqual(['terminal', 'list', '--worktree', 'path:/some/wt', '--json']);
   });
 
+  test('orca가 워크트리를 모르면 빈 목록', async () => {
+    const saved = process.env.ORCA_BIN;
+    process.env.ORCA_BIN = '/usr/bin/false';
+    expect(await listTerminals('/x')).toEqual([]);
+    process.env.ORCA_BIN = saved;
+  });
+
+
   test('sendFeedback는 --enter 없이 원문 그대로 보낸다', async () => {
     const text = '## 리뷰\n\n```ts\nconst a = "x";\n```\n코멘트 $HOME `id`';
     await sendFeedback('term_1', text);

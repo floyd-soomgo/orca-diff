@@ -111,3 +111,27 @@ select, input[type='text'], input:not([type]), textarea { background: #45494a; b
 .preview { color: var(--dim); overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; }
 .row.selected .preview { color: #eee; }
 button.link { border: none; background: none; color: #589df6; padding: 0; }
+
+.comment-zone { max-width: 640px; margin: 4px 8px 4px 40px; padding: 6px 10px; background: #3b3f41; border: 1px solid #5d6163; border-left: 3px solid var(--warn); border-radius: 4px; font: 13px/1.4 -apple-system, sans-serif; color: var(--text); overflow: auto; height: calc(100% - 8px); }
+.comment-zone.composer { border-left-color: var(--accent); display: flex; flex-direction: column; gap: 4px; }
+.comment-body { white-space: pre-wrap; }
+.comment-label { color: var(--dim); font-size: 12px; }
+.comment-input { width: 100%; flex: 1; min-height: 60px; resize: vertical; font: 13px/1.4 -apple-system, sans-serif; }
+.comment-actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 4px; }
+.comment-actions .sent, .badge { color: var(--dim); font-size: 11px; border: 1px solid var(--border); border-radius: 8px; padding: 0 6px; margin-left: 6px; }
+.badge.warn { color: var(--warn); border-color: var(--warn); }
+button.primary { background: #365880; border-color: #4c708c; color: #fff; }
+.feedback-panel { display: flex; flex-direction: column; }
+.feedback-bar { display: flex; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+.feedback-bar label { display: flex; gap: 4px; align-items: center; color: var(--dim); }
+.feedback-item { padding: 6px 10px; border-bottom: 1px solid #45494a; cursor: pointer; }
+.feedback-item:hover { background: #45494a; }
+.feedback-item.sent { opacity: 0.6; }
+.feedback-loc { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; color: #ddd; }
+.feedback-body { white-space: pre-wrap; margin-top: 2px; }
+.dialog-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 950; display: flex; align-items: center; justify-content: center; }
+.dialog-backdrop.transparent { background: transparent; display: block; }
+.dialog { width: 560px; max-width: calc(100% - 32px); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.dialog .comment-input { min-height: 120px; }
+.context-menu { position: fixed; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 4px 0; min-width: 180px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); }
+.context-menu .row { padding: 4px 12px; }
