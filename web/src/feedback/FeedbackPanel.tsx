@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Terminal } from '../../../server/shared/types.ts';
 import { getBranches, getChanges, getOrca, getTerminals, HOST, send, WT } from '../api.ts';
+import { useFeedbackSubmit } from '../settings/feedbackSubmit.ts';
 import { useStore } from '../store.ts';
 import { appendBlock } from './appendBlock.ts';
 import { formatFeedback } from './format.ts';
@@ -53,15 +54,16 @@ export function FeedbackPanel() {
 
   // Orca가 있고 대상 터미널이 있으면 입력창에 넣고, 아니면 클립보드에 복사한다
   const canSend = orca === true && target !== '';
+  const submit = useFeedbackSubmit((s) => s.submit);
   const deliver = async (commentList: ReviewComment[]) => {
     if (commentList.length === 0) return;
     const text = formatFeedback(commentList, { wt: WT, host: HOST, branch });
     setSending(true);
     try {
       if (canSend) {
-        await send(target, text);
+        await send(target, text, submit);
         saveTarget(HOST || WT, target);
-        toast('에이전트 입력창에 넣었습니다. 확인 후 Enter를 눌러 보내세요');
+        toast(submit ? '에이전트에 보냈습니다' : '에이전트 입력창에 넣었습니다. 확인 후 Enter를 눌러 보내세요');
       } else {
         await navigator.clipboard.writeText(text);
         toast('클립보드에 복사했습니다');
@@ -108,7 +110,7 @@ export function FeedbackPanel() {
           </>
         )}
         <button className="primary" disabled={unsent.length === 0 || sending} onClick={() => deliver(unsent)}>
-          {canSend ? `입력창에 넣기 (${unsent.length})` : `클립보드에 복사 (${unsent.length})`}
+          {canSend ? `${submit ? '에이전트에 보내기' : '입력창에 넣기'} (${unsent.length})` : `클립보드에 복사 (${unsent.length})`}
         </button>
         <label>
           <input type="checkbox" checked={showSent} onChange={(e) => {

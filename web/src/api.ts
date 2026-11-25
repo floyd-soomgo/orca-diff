@@ -54,7 +54,7 @@ export const getDefinition = (q: NavQuery) => request<Location[]>('POST', '/api/
 export const getReferences = (q: NavQuery) => request<Location[]>('POST', '/api/references', {}, q);
 export const getOrca = () => request<{ available: boolean }>('GET', '/api/orca');
 export const getTerminals = () => request<Terminal[]>('GET', '/api/terminals');
-export const send = (handle: string, text: string) => request<{ ok: true }>('POST', '/api/send', {}, { handle, text });
+export const send = (handle: string, text: string, submit: boolean) => request<{ ok: true }>('POST', '/api/send', {}, { handle, text, submit });
 export const getComments = () => request<ReviewComment[]>('GET', '/api/comments');
 export const saveComments = (comments: ReviewComment[]) => request<{ ok: true }>('POST', '/api/comments', {}, { comments });
 export const getPatch = (source: Source, change: Change) =>

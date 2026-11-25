@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useFeedbackSubmit } from './feedbackSubmit.ts';
 import { detectInstalledFonts, useFontSettings } from './fontSettings.ts';
 
-// 상단 바의 ⚙ 버튼과 글꼴·크기 설정 팝오버
+// 상단 바의 ⚙ 버튼과 설정 팝오버(뷰어 글꼴, 피드백 전송 방식)
 export function FontSettingsButton() {
   const { family, size, set } = useFontSettings();
   const [open, setOpen] = useState(false);
+  const { submit, setSubmit } = useFeedbackSubmit();
   const installed = useMemo(() => (open ? detectInstalledFonts() : []), [open]);
   const fonts = installed.includes(family) ? installed : [family, ...installed];
 
@@ -24,7 +26,7 @@ export function FontSettingsButton() {
 
   return (
     <div className="font-settings">
-      <button className="icon-button" title="뷰어 글꼴 설정" aria-label="뷰어 글꼴 설정" onClick={() => setOpen(!open)}>
+      <button className="icon-button" title="설정" aria-label="설정" onClick={() => setOpen(!open)}>
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
           <path
             fill="currentColor"
@@ -53,6 +55,15 @@ export function FontSettingsButton() {
           <div className="font-preview" style={{ fontFamily: `"${family}", monospace`, fontSize: size }}>
             {'const add = (a, b) => a + b; // 0Oo 1lI'}
           </div>
+          <div className="popover-title">피드백 전송</div>
+          <label>
+            <input
+              type="checkbox"
+              checked={submit}
+              onChange={(e) => setSubmit(e.target.checked)}
+            />
+            입력창에 넣고 바로 제출(Enter)
+          </label>
         </div>
       )}
     </div>

@@ -58,6 +58,11 @@ describe('orca 터미널', () => {
     expect(args).toEqual(['terminal', 'send', '--terminal', 'term_1', '--text', text]);
   });
 
+  test('sendFeedback에 submit을 주면 --enter를 붙인다', async () => {
+    await sendFeedback('term_1', 'hi', true);
+    expect(await loggedArgs()).toEqual(['terminal', 'send', '--terminal', 'term_1', '--text', 'hi', '--enter']);
+  });
+
   test('ORCA_BIN이 없는 경로면 orcaAvailable은 false', async () => {
     const saved = process.env.ORCA_BIN;
     process.env.ORCA_BIN = '/no/such/orca';
