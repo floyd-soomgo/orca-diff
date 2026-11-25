@@ -7,6 +7,7 @@ import { openCommitDialog } from '../feedback/storage.ts';
 import { useStore } from '../store.ts';
 
 const PAGE = 200;
+const FOCUS_REFRESH_INTERVAL_MS = 250;
 const rtf = new Intl.RelativeTimeFormat('ko', { numeric: 'auto' });
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60],
@@ -33,15 +34,14 @@ function openCommitMenu(c: Commit, e: React.MouseEvent) {
 export function CommitList() {
   const { branch, base, baseOnly, setBaseOnly, filter, setFilter, selection, select, refresh, refreshTick, toast } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [commits, setCommits] = useState<Commit[]>([]);
-  const [done, setDone] = useState(false);
+  const [{ commits, done }, setHistory] = useState<{ commits: Commit[]; done: boolean }>({ commits: [], done: false });
   const loading = useRef(false);
   const requestId = useRef(0);
-  const anchor = useRef<number | null>(null);
+  const anchorSha = useRef<string | null>(null);
   const effectiveBase = baseOnly && base && branch !== base ? base : null;
 
   const load = useCallback(
-    async (skip: number) => {
+    async (skip: number, keepLoadedPages = false) => {
       if (!branch) return;
       // 다음 페이지 로드는 중복 요청만 막고, 첫 페이지(브랜치·기준 변경)는 항상 새로 요청한다
       if (skip > 0 && loading.current) return;
@@ -50,8 +50,19 @@ export function CommitList() {
       try {
         const page = await getCommits({ ref: branch, base: effectiveBase, skip, limit: PAGE });
         if (id !== requestId.current) return; // 더 새 요청이 있으면 이 응답은 버린다
-        setCommits((prev) => (skip === 0 ? page : [...prev, ...page]));
-        setDone(page.length < PAGE);
+        setHistory((previous) => {
+          const lastPage = page.length < PAGE;
+          if (skip > 0) return { commits: [...previous.commits, ...page], done: lastPage };
+          if (!keepLoadedPages || lastPage) return { commits: page, done: lastPage };
+
+          // 다시 읽은 첫 페이지와 겹치는 커밋 뒤에 이미 불러온 이력을 이어 붙인다.
+          const lastSha = page[page.length - 1].sha;
+          const overlap = previous.commits.findIndex((commit) => commit.sha === lastSha);
+          if (overlap === -1) return { commits: page, done: false };
+          const pageShas = new Set(page.map((commit) => commit.sha));
+          const older = previous.commits.slice(overlap + 1).filter((commit) => !pageShas.has(commit.sha));
+          return { commits: [...page, ...older], done: previous.done };
+        });
       } catch (e) {
         if (id === requestId.current) toast(`커밋 목록 실패: ${(e as Error).message}`, 'error');
       } finally {
@@ -65,6 +76,22 @@ export function CommitList() {
     load(0);
   }, [load, refreshTick]);
 
+  useEffect(() => {
+    let lastRefreshAt = -Infinity;
+    const refreshOnReturn = () => {
+      const now = performance.now();
+      if (document.hidden || loading.current || now - lastRefreshAt < FOCUS_REFRESH_INTERVAL_MS) return;
+      lastRefreshAt = now;
+      load(0, true);
+    };
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    return () => {
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+    };
+  }, [load]);
+
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return commits;
@@ -74,12 +101,14 @@ export function CommitList() {
   const selectedShas = selection.mode === 'commits' ? selection.shas : [];
 
   const onClick = (idx: number, e: React.MouseEvent) => {
-    if (e.shiftKey && anchor.current !== null) {
-      const [a, b] = [Math.min(anchor.current, idx), Math.max(anchor.current, idx)];
+    const anchorIndex = e.shiftKey ? visible.findIndex((commit) => commit.sha === anchorSha.current) : -1;
+    if (anchorIndex !== -1) {
+      const [a, b] = [Math.min(anchorIndex, idx), Math.max(anchorIndex, idx)];
       select({ mode: 'commits', shas: visible.slice(a, b + 1).map((c) => c.sha) });
     } else {
-      anchor.current = idx;
-      select({ mode: 'commits', shas: [visible[idx].sha] });
+      const sha = visible[idx].sha;
+      anchorSha.current = sha;
+      select({ mode: 'commits', shas: [sha] });
     }
   };
 
@@ -172,7 +201,7 @@ export function CommitList() {
         <div
           className={`row ${selection.mode === 'worktree' ? 'selected' : ''}`}
           onClick={() => {
-            anchor.current = null;
+            anchorSha.current = null;
             select({ mode: 'worktree' });
           }}
         >
