@@ -1,11 +1,9 @@
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css';
 import { markMarkdownChanges } from './markdownChanges.ts';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import 'github-markdown-css/github-markdown-light.css';
 
 export function MarkdownPage({ text, label, changes }: { text: string; label?: string; changes?: Set<number> }) {
   return <section className="markdown-page">

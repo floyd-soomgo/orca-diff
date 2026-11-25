@@ -21,7 +21,59 @@
   --primary: #1f883d;
   --primary-border: #1a7f37;
   --shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+  --on-accent: #ffffff;
+  --primary-hover: #1c8139;
+  --add-bg: #dafbe1;
+  --add-gutter: #ccffd8;
+  --del-bg: #ffebe9;
+  --del-gutter: #ffd7d5;
+  --comment-range: rgba(255, 236, 150, 0.9);
+  --notice-bg: #fff8c5;
+  --chip-fg: #40566b;
+  --chip-bg: #e2eaf2;
+  --chip-border: #aabbcb;
+  --tooltip-bg: #24292f;
+  --mark-bg: #fff3a3;
   color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  /* GitHub Primer dark */
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-dark: #161b22;
+  --border: #30363d;
+  --border-muted: #21262d;
+  --text: #e6edf3;
+  --dim: #9198a1;
+  --accent: #4493f8;
+  --hover: #21262d;
+  --selected: #172b45;
+  --selected-strong: #4493f8;
+  --input-bg: #0d1117;
+  --added: #3fb950;
+  --modified: #d29922;
+  --deleted: #f85149;
+  --renamed: #ab7df8;
+  --warn: #d29922;
+  --error: #f85149;
+  --primary: #238636;
+  --primary-border: #2ea043;
+  --shadow: 0 8px 24px rgba(1, 4, 9, 0.6);
+  --on-accent: #0d1117;
+  --primary-hover: #29903b;
+  --add-bg: #12261e;
+  --add-gutter: #1c4428;
+  --del-bg: #25171c;
+  --del-gutter: #542426;
+  --comment-range: rgba(187, 128, 9, 0.35);
+  --notice-bg: #272115;
+  --chip-fg: #a9bfd6;
+  --chip-bg: #1f2a37;
+  --chip-border: #3d5166;
+  --tooltip-bg: #3d444d;
+  --mark-bg: rgba(187, 128, 9, 0.5);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -117,7 +169,7 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .toggle button { border-radius: 0; }
 .toggle button:first-child { border-radius: 6px 0 0 6px; }
 .toggle button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
-.toggle button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toggle button.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .monaco-host { flex: 1; min-height: 0; }
 .reveal-line { background: rgba(84, 174, 255, 0.25); }
 
@@ -151,7 +203,7 @@ button.link { border: none; background: none; color: var(--accent); padding: 0; 
 .comment-actions .sent, .badge { color: var(--dim); font-size: 11px; border: 1px solid var(--border); border-radius: 8px; padding: 0 6px; margin-left: 6px; }
 .badge.warn { color: var(--warn); border-color: var(--warn); }
 button.primary { background: var(--primary); border-color: var(--primary-border); color: #fff; font-weight: 600; }
-button.primary:hover { background: #1c8139; }
+button.primary:hover { background: var(--primary-hover); }
 .feedback-panel { display: flex; flex-direction: column; }
 .feedback-bar { display: flex; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
 .feedback-bar label { display: flex; gap: 4px; align-items: center; color: var(--dim); }
@@ -179,31 +231,31 @@ button.primary:hover { background: #1c8139; }
 .monaco-editor .margin-view-overlays .line-numbers,
 .monaco-editor .margin-view-overlays .cgmr { cursor: pointer !important; }
 .monaco-editor .comment-plus { cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.monaco-editor .comment-plus::before { content: '+'; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; background: var(--accent); color: #fff; font: 600 13px/1 -apple-system, sans-serif; box-shadow: 0 1px 2px rgba(31, 35, 40, 0.3); }
-.monaco-editor .comment-range-line { background: rgba(255, 236, 150, 0.9); }
+.monaco-editor .comment-plus::before { content: '+'; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font: 600 13px/1 -apple-system, sans-serif; box-shadow: 0 1px 2px rgba(31, 35, 40, 0.3); }
+.monaco-editor .comment-range-line { background: var(--comment-range); }
 /* 코멘트 범위 줄에서는 diff의 글자 단위 강조가 노란색 위에 그려지므로 감춘다 */
 .monaco-editor .view-overlays > div:has(> .comment-range-line) > .char-insert,
 .monaco-editor .view-overlays > div:has(> .comment-range-line) > .char-delete { background: transparent !important; }
 .monaco-editor .margin-view-overlays > div:has(> .comment-range-margin) > .gutter-insert,
 .monaco-editor .margin-view-overlays > div:has(> .comment-range-margin) > .gutter-delete { background: transparent !important; }
-.monaco-editor .comment-range-margin { background: rgba(255, 236, 150, 0.9); box-shadow: inset 3px 0 #d4a72c; }
+.monaco-editor .comment-range-margin { background: var(--comment-range); box-shadow: inset 3px 0 #d4a72c; }
 /* 거터 드래그 중에는 텍스트 선택 색을 숨겨 코멘트 범위와 구분한다 */
 .monaco-editor.gutter-dragging .selected-text,
 .monaco-editor.gutter-dragging .current-line { background: transparent !important; border: none !important; }
 
 /* 새 파일/삭제 파일 단일 보기 */
-.monaco-editor .full-insert-line { background: #dafbe1; }
-.monaco-editor .full-insert-margin { background: #ccffd8; }
-.monaco-editor .full-delete-line { background: #ffebe9; }
-.monaco-editor .full-delete-margin { background: #ffd7d5; }
+.monaco-editor .full-insert-line { background: var(--add-bg); }
+.monaco-editor .full-insert-margin { background: var(--add-gutter); }
+.monaco-editor .full-delete-line { background: var(--del-bg); }
+.monaco-editor .full-delete-margin { background: var(--del-gutter); }
 .file-badge { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 12px; border: 1px solid; }
-.file-badge.new { color: var(--added); border-color: var(--added); background: #dafbe1; }
-.file-badge.old { color: var(--deleted); border-color: var(--deleted); background: #ffebe9; }
+.file-badge.new { color: var(--added); border-color: var(--added); background: var(--add-bg); }
+.file-badge.old { color: var(--deleted); border-color: var(--deleted); background: var(--del-bg); }
 
 .context-menu { z-index: 1000; }
 .menu-item { display: flex; justify-content: space-between; gap: 12px; padding: 4px 12px; cursor: default; white-space: nowrap; }
-.menu-item:hover { background: var(--accent); color: #fff; }
-.menu-item:hover .shortcut { color: #fff; }
+.menu-item:hover { background: var(--accent); color: var(--on-accent); }
+.menu-item:hover .shortcut { color: var(--on-accent); }
 .menu-item.disabled { color: var(--dim); opacity: 0.6; }
 .menu-item.disabled:hover { background: none; color: var(--dim); }
 .menu-item .shortcut { color: var(--dim); font-size: 12px; }
@@ -212,13 +264,13 @@ button.primary:hover { background: #1c8139; }
 .search-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--panel); border-bottom: 1px solid var(--border-muted); }
 .search-bar input { flex: 0 1 420px; min-width: 120px; }
 .search-option { min-width: 28px; padding: 0 6px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; }
-.search-option.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.search-option.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .search-summary { margin-left: 8px; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search-error { color: var(--error); }
 /* 방향키로 위로 올라갈 때 고정된 검색 줄에 가려지지 않게 합니다 */
 .find-in-files .row, .find-in-files summary { scroll-margin-top: 36px; }
 .find-in-files:focus { outline: none; }
-.preview mark { background: #fff3a3; color: var(--text); border-radius: 2px; }
+.preview mark { background: var(--mark-bg); color: var(--text); border-radius: 2px; }
 
 .nav-loading { position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%); z-index: 980; display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); white-space: nowrap; }
 .nav-loading .hint { color: var(--dim); font-size: 12px; }
@@ -235,15 +287,15 @@ button.primary:hover { background: #1c8139; }
 .comment-actions .align-left { margin-right: auto; }
 
 /* 큰 파일 패치 보기 */
-.patch-notice { padding: 4px 10px; font-size: 12px; color: var(--dim); background: #fff8c5; border-bottom: 1px solid var(--border-muted); flex: none; }
-.monaco-editor .patch-hunk-line { background: #ddf4ff; }
+.patch-notice { padding: 4px 10px; font-size: 12px; color: var(--dim); background: var(--notice-bg); border-bottom: 1px solid var(--border-muted); flex: none; }
+.monaco-editor .patch-hunk-line { background: var(--selected); }
 .monaco-editor .patch-meta-line { background: var(--panel); }
 
 /* 탭 줄 스크롤바 숨김(휠·트랙패드로 스크롤) */
 .tab-bar { scrollbar-width: none; }
 .tab-bar::-webkit-scrollbar { display: none; }
 .tab { flex: none; }
-.toggle-single.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toggle-single.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .commit-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
 .commit-detail-who { user-select: text; word-break: break-all; }
 .commit-detail pre, .commit-detail .meta { user-select: text; }
@@ -255,11 +307,11 @@ button.primary:hover { background: #1c8139; }
 .panel-actions .icon-button.small { width: 24px; height: 22px; }
 .panel-actions { display: flex; gap: 2px; }
 .chip { display: inline-grid; place-items: center; width: 24px; height: 20px; padding: 0; border-radius: 5px; color: var(--dim); background: var(--bg); }
-.chip.active { color: #40566B; background: #E2EAF2; border-color: #AABBCB; }
+.chip.active { color: var(--chip-fg); background: var(--chip-bg); border-color: var(--chip-border); }
 .panel-actions { align-items: center; }
 
 /* 앱 자체 툴팁(title 속성 대체) */
-.tooltip { position: fixed; z-index: 1100; pointer-events: none; max-width: 360px; padding: 4px 8px; background: #24292f; color: #fff; font-size: 12px; line-height: 1.4; border-radius: 6px; white-space: pre-line; box-shadow: var(--shadow); }
+.tooltip { position: fixed; z-index: 1100; pointer-events: none; max-width: 360px; padding: 4px 8px; background: var(--tooltip-bg); color: #fff; font-size: 12px; line-height: 1.4; border-radius: 6px; white-space: pre-line; box-shadow: var(--shadow); }
 
 .image-diff { display: flex; gap: 12px; padding: 12px; overflow: auto; }
 .image-diff figure { flex: 1; min-width: 0; margin: 0; }
@@ -278,8 +330,8 @@ button.primary:hover { background: #1c8139; }
 .finder-results button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: var(--bg); overflow-wrap: anywhere; }
 .finder-results button[aria-current=true], .finder-results button:hover { background: var(--selected); }
 .markdown-pages { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-rows: max-content; flex: 1; min-height: 0; overflow: auto; }
-.markdown-page { flex: 1; min-width: 0; --md-change: #ffebe9; }
-.markdown-page + .markdown-page { --md-change: #dafbe1; }
+.markdown-page { flex: 1; min-width: 0; --md-change: var(--del-bg); }
+.markdown-page + .markdown-page { --md-change: var(--add-bg); }
 .markdown-page > .panel-title { position: sticky; top: 0; z-index: 1; }
 .markdown-page .md-change, .markdown-page .md-change-line { background: var(--md-change); }
 .markdown-page + .markdown-page { border-left: 1px solid var(--border); }
