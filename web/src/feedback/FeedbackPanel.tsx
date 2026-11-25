@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Terminal } from '../../../server/shared/types.ts';
-import { getBranches, getChanges, getOrca, getTerminals, send, WT } from '../api.ts';
+import { getBranches, getChanges, getOrca, getTerminals, HOST, send, WT } from '../api.ts';
 import { useStore } from '../store.ts';
 import { appendBlock } from './appendBlock.ts';
 import { formatFeedback } from './format.ts';
@@ -20,7 +20,7 @@ export function FeedbackPanel() {
   const [showSent, setShowSent] = useState(false);
   const [orca, setOrca] = useState<boolean | null>(null);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
-  const [target, setTarget] = useState<string>(() => loadTarget(WT) ?? '');
+  const [target, setTarget] = useState<string>(() => loadTarget(HOST || WT) ?? '');
   const [branch, setBranch] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -53,12 +53,12 @@ export function FeedbackPanel() {
   const canSend = orca === true && target !== '';
   const deliver = async () => {
     if (unsent.length === 0) return;
-    const text = formatFeedback(unsent, { wt: WT, branch });
+    const text = formatFeedback(unsent, { wt: WT, host: HOST, branch });
     setSending(true);
     try {
       if (canSend) {
         await send(target, text);
-        saveTarget(WT, target);
+        saveTarget(HOST || WT, target);
         toast('에이전트 입력창에 넣었습니다. 확인 후 Enter를 눌러 보내세요');
       } else {
         await navigator.clipboard.writeText(text);

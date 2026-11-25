@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile, spawn } from 'node:child_process';
 import { openSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { CONFIG_DIR, loadOrCreateKey, PORT } from '../server/config.ts';
@@ -56,8 +56,11 @@ async function openUrl(url: string, wt: string): Promise<void> {
     if (existing) {
       await exec('orca', ['tab', 'switch', '--page', existing.page, '--worktree', `path:${wt}`, '--focus']);
       // 탭이 다른 워크트리를 보고 있으면 이 워크트리로 이동한다(탭 안의 경로는 그대로 두고)
-      const shown = new URL(existing.url).searchParams.get('wt');
-      if (shown !== wt) await exec('orca', ['goto', '--url', url, '--page', existing.page]);
+      const shown = new URL(existing.url).searchParams;
+      const wanted = new URL(url).searchParams;
+      if (shown.get('wt') !== wanted.get('wt') || shown.get('host') !== wanted.get('host')) {
+        await exec('orca', ['goto', '--url', url, '--page', existing.page]);
+      }
       return;
     }
     await exec('orca', ['tab', 'create', '--url', url, '--worktree', `path:${wt}`]);
@@ -68,23 +71,32 @@ async function openUrl(url: string, wt: string): Promise<void> {
   await exec('open', [url]);
 }
 
+async function toplevel(dir: string): Promise<string | null> {
+  try {
+    return (await exec('git', ['-C', dir, 'rev-parse', '--show-toplevel'])).stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   if (process.argv.includes('--restart')) {
     await restartServer(loadOrCreateKey());
     console.log(`서버를 새 코드로 다시 띄웠습니다 (포트 ${PORT}). 열려 있는 탭은 새로 고치세요.`);
     return;
   }
-  let wt: string;
-  try {
-    wt = (await exec('git', ['rev-parse', '--show-toplevel'])).stdout.trim();
-  } catch {
-    console.error('git 워크트리 안에서 실행하세요.');
+  // 인자로 준 경로의 저장소를 리뷰하고, 탭은 지금 폴더의 Orca 워크트리에 엽니다
+  const target = process.argv.slice(2).find((a) => !a.startsWith('-'));
+  const host = await toplevel(process.cwd());
+  const wt = target ? await toplevel(resolve(target)) : host;
+  if (!wt) {
+    console.error(target ? `${target}는 git 저장소가 아닙니다.` : 'git 워크트리 안에서 실행하거나, 리뷰할 저장소 경로를 인자로 주세요.');
     process.exit(1);
   }
   const key = loadOrCreateKey();
   await ensureServer(key);
-  const url = `http://127.0.0.1:${PORT}/?${new URLSearchParams({ key, wt })}`;
-  await openUrl(url, wt);
+  const url = `http://127.0.0.1:${PORT}/?${new URLSearchParams({ key, wt, ...(host && host !== wt ? { host } : {}) })}`;
+  await openUrl(url, host ?? wt);
   console.log(url);
 }
 
