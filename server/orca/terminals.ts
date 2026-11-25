@@ -33,10 +33,10 @@ export async function listTerminals(wt: string): Promise<Terminal[]> {
   return terminals.map((t) => ({ handle: t.handle, title: t.title ?? t.handle }));
 }
 
-// 입력창에 넣기만 한다. 제출(Enter)은 사용자가 한다 — 절대 --enter를 붙이지 않는다.
-// 여러 줄 텍스트는 한 덩어리 초안으로 들어간다.
-export async function sendFeedback(handle: string, text: string): Promise<void> {
-  await orca(['terminal', 'send', '--terminal', handle, '--text', text]);
+// 기본은 입력창에 넣기만 하고 제출(Enter)은 사용자가 한다. submit은 사용자가 설정에서 켠 경우에만 온다.
+// 여러 줄 텍스트는 한 덩어리 초안으로 들어간다(--enter면 orca가 에이전트에 bracketed paste로 넣는다).
+export async function sendFeedback(handle: string, text: string, submit = false): Promise<void> {
+  await orca(['terminal', 'send', '--terminal', handle, '--text', text, ...(submit ? ['--enter'] : [])]);
 }
 
 function requireHost(host: string | null): string {
@@ -48,11 +48,11 @@ export const orcaRoutes: Routes = {
   'GET /api/orca': async () => ({ available: await orcaAvailable() }),
   'GET /api/terminals': ({ host }) => listTerminals(requireHost(host)),
   'POST /api/send': async ({ host, body }) => {
-    const { handle, text } = (body ?? {}) as { handle?: unknown; text?: unknown };
+    const { handle, text, submit } = (body ?? {}) as { handle?: unknown; text?: unknown; submit?: unknown };
     if (typeof handle !== 'string' || typeof text !== 'string' || !text) throw new BadRequest('handle과 text가 필요합니다');
     // 이 워크트리의 터미널에만 보낼 수 있다
     if (!(await listTerminals(requireHost(host))).some((t) => t.handle === handle)) throw new BadRequest('이 워크트리의 터미널이 아닙니다');
-    await sendFeedback(handle, text);
+    await sendFeedback(handle, text, submit === true);
     return { ok: true };
   },
 };
