@@ -11,6 +11,7 @@ import { Tooltip } from './Tooltip.tsx';
 import { attachComments, type CommentsHandle } from './feedback/commentZones.ts';
 import { CommentDialog, FeedbackPanel } from './feedback/FeedbackPanel.tsx';
 import { useFeedback } from './feedback/storage.ts';
+import { FindInFilesPanel, useFindInFilesKey } from './nav/FindInFilesPanel.tsx';
 import { FindUsagesPanel } from './nav/FindUsagesPanel.tsx';
 import { NavLoadingIndicator } from './nav/NavLoadingIndicator.tsx';
 import { UsagesPopup } from './nav/UsagesPopup.tsx';
@@ -167,6 +168,7 @@ export function App() {
   const [bottomHeight, setBottomHeight] = usePanelSize('bottom', 220);
   const bottomOpen = useStore((s) => s.bottomPanel !== null);
   useGlobalNavKeys();
+  useFindInFilesKey();
   const unsentCount = useFeedback((s) => s.comments.filter((c) => !c.sentAt).length);
 
   return (
@@ -185,7 +187,7 @@ export function App() {
           <EditorTabs renderTab={renderTab} tabActions={fileCommentButton} />
           {bottomOpen && <Splitter direction="horizontal" size={bottomHeight} onResize={setBottomHeight} invert />}
           <div style={{ height: bottomOpen ? bottomHeight : 'auto', display: 'flex' }}>
-            <BottomPanel usages={<FindUsagesPanel />} feedback={<FeedbackPanel />} feedbackCount={unsentCount} />
+            <BottomPanel usages={<FindUsagesPanel />} search={<FindInFilesPanel />} feedback={<FeedbackPanel />} feedbackCount={unsentCount} />
           </div>
         </div>
       </div>

@@ -39,6 +39,14 @@ export const getFilePair = (source: Source, change: Change) =>
     binary: change.binary ? '1' : '0',
     ...(change.oldPath ? { oldPath: change.oldPath } : {}),
   });
+export interface SearchOptions { caseSensitive: boolean; wholeWord: boolean; regex: boolean }
+export const searchCode = (query: string, o: SearchOptions) =>
+  request<{ locations: Location[]; truncated: boolean }>('GET', '/api/search', {
+    q: query,
+    case: o.caseSensitive ? '1' : '0',
+    word: o.wholeWord ? '1' : '0',
+    regex: o.regex ? '1' : '0',
+  });
 export const getFile = (path: string) => request<{ content: string }>('GET', '/api/file', { path });
 export const getDefinition = (q: NavQuery) => request<Location[]>('POST', '/api/definition', {}, q);
 export const getReferences = (q: NavQuery) => request<Location[]>('POST', '/api/references', {}, q);
