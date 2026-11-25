@@ -1,6 +1,6 @@
 import { SearchEverywhere } from './SearchEverywhere.tsx';
 import { useEffect, useState } from 'react';
-import { type Branches, getBranches, getWorktrees, KEY, WT } from '../api.ts';
+import { type Branches, getBranches, getWorktrees, HOST, KEY, WT } from '../api.ts';
 import moonIcon from '../assets/moon.svg';
 import sunIcon from '../assets/sun.svg';
 import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
@@ -29,7 +29,7 @@ export function TopBar() {
   }, [setBranch, toast]);
 
   const switchWorktree = (path: string) => {
-    location.search = `?${new URLSearchParams({ key: KEY, wt: path })}`;
+    location.search = `?${new URLSearchParams({ key: KEY, wt: path, ...(HOST ? { host: HOST } : {}) })}`;
   };
 
   return (

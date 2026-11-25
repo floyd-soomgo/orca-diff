@@ -4,9 +4,11 @@ import type { ReviewComment } from './feedback/model.ts';
 const params = new URLSearchParams(location.search);
 export const KEY = params.get('key') ?? '';
 export const WT = params.get('wt') ?? '';
+// 리뷰 대상과 다른 Orca 워크트리에서 탭을 열었을 때만 있습니다
+export const HOST = params.get('host') ?? '';
 
 async function request<T>(method: 'GET' | 'POST', path: string, query: Record<string, string> = {}, body?: object): Promise<T> {
-  const qs = new URLSearchParams({ key: KEY, ...(method === 'GET' ? { wt: WT } : {}), ...query });
+  const qs = new URLSearchParams({ key: KEY, ...(method === 'GET' ? { wt: WT } : {}), ...(HOST ? { host: HOST } : {}), ...query });
   const res = await fetch(`${path}?${qs}`, {
     method,
     headers: body ? { 'content-type': 'application/json' } : undefined,

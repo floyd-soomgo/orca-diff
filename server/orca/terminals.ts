@@ -39,14 +39,19 @@ export async function sendFeedback(handle: string, text: string): Promise<void> 
   await orca(['terminal', 'send', '--terminal', handle, '--text', text]);
 }
 
+function requireHost(host: string | null): string {
+  if (!host) throw new BadRequest('탭을 연 워크트리를 찾을 수 없습니다. orca-diff를 다시 실행하세요');
+  return host;
+}
+
 export const orcaRoutes: Routes = {
   'GET /api/orca': async () => ({ available: await orcaAvailable() }),
-  'GET /api/terminals': ({ wt }) => listTerminals(wt),
-  'POST /api/send': async ({ wt, body }) => {
+  'GET /api/terminals': ({ host }) => listTerminals(requireHost(host)),
+  'POST /api/send': async ({ host, body }) => {
     const { handle, text } = (body ?? {}) as { handle?: unknown; text?: unknown };
     if (typeof handle !== 'string' || typeof text !== 'string' || !text) throw new BadRequest('handle과 text가 필요합니다');
     // 이 워크트리의 터미널에만 보낼 수 있다
-    if (!(await listTerminals(wt)).some((t) => t.handle === handle)) throw new BadRequest('이 워크트리의 터미널이 아닙니다');
+    if (!(await listTerminals(requireHost(host))).some((t) => t.handle === handle)) throw new BadRequest('이 워크트리의 터미널이 아닙니다');
     await sendFeedback(handle, text);
     return { ok: true };
   },

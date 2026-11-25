@@ -66,6 +66,27 @@ describe('orca 터미널', () => {
     expect(await orcaAvailable()).toBe(true);
   });
 
+  test('host를 주면 리뷰 대상이 아니라 탭을 연 워크트리의 터미널을 찾는다', async () => {
+    const KEY = 'd'.repeat(64);
+    const host = await gitFixture();
+    const server = createApp({ key: KEY, staticDir: null, routes: orcaRoutes });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/terminals?key=${KEY}`;
+    try {
+      const res = await fetch(`${base}&${new URLSearchParams({ wt: fx.dir, host: host.dir })}`);
+      expect(res.status).toBe(200);
+      const selector = (await loggedArgs())[3];
+      expect(selector).toMatch(/^path:/);
+      expect(selector.endsWith(host.dir.split('/').at(-1)!)).toBe(true);
+      // host가 사라져도 터미널 기능만 막히고 리뷰 화면은 그대로 동작합니다
+      const gone = new URLSearchParams({ wt: fx.dir, host: '/no/such' });
+      expect((await fetch(`${base}&${gone}`)).status).toBe(400);
+      expect((await fetch(`${base.replace('/api/terminals', '/api/worktree-files')}&${gone}`)).status).toBe(200);
+    } finally {
+      server.close();
+    }
+  });
+
   test('/api/send는 목록에 없는 handle을 400으로 거부한다', async () => {
     const KEY = 'c'.repeat(64);
     const server = createApp({ key: KEY, staticDir: null, routes: orcaRoutes });

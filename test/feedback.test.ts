@@ -30,6 +30,17 @@ describe('relocate', () => {
 const base = { body: '', createdAt: 0, sentAt: null, stale: false };
 
 describe('formatFeedback', () => {
+  test('탭을 연 워크트리가 리뷰 대상과 다르면 경로의 기준 저장소를 적는다', () => {
+    const comments: ReviewComment[] = [
+      { ...base, id: '1', target: { kind: 'file', source: { kind: 'unstaged' }, path: 'src/a.ts' }, body: '확인해 주세요' },
+    ];
+    expect(formatFeedback(comments, { wt: '/other/repo', host: '/session/wt', branch: null }).split('\n\n').slice(0, 2)).toEqual([
+      '## 코드 리뷰 피드백 (1건)',
+      '아래 경로는 `/other/repo` 저장소 기준입니다.',
+    ]);
+    expect(formatFeedback(comments, { wt: '/repo', host: '/repo', branch: null })).not.toContain('저장소 기준');
+  });
+
   test('라인·범위·파일·커밋 코멘트를 정해진 형식으로 만든다', () => {
     const comments: ReviewComment[] = [
       {
