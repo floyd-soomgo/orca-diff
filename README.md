@@ -43,6 +43,7 @@ pkill -f 'orca-diff/server/index[.]ts'
 - **왼쪽 위 Commits**: 맨 위 `Working tree`와 선택한 브랜치의 커밋 목록. 제목 줄의 돋보기로 메시지/작성자 필터를 엽니다(Esc로 닫기). 제목 줄의 "이 브랜치만" 브랜치 아이콘을 켜면(기본값) 기준 브랜치 `origin/HEAD`에는 없는 커밋만 보입니다. Shift+클릭으로 범위를 선택하면 합친 diff가 나옵니다. 우클릭하면 커밋 코멘트를 달 수 있습니다.
 - **왼쪽 아래 Changes**: 변경 파일 트리. Working tree는 Unstaged/Staged로 나뉘고, 3초마다 다시 읽습니다.
 - **가운데 탭**: diff 탭(Split/Unified, 변경 뭉치/전체)과 읽기 전용 파일 탭이 있습니다. 탭의 💬로 파일 전체에 코멘트를 답니다.
+- **검색 창**: Shift를 두 번 누르면 파일 이름과 코드 내용을 함께 찾습니다. 파일은 8개, 코드는 30건까지 보이고, 더 보려면 ⌘Enter로 Find in Files 도구 창으로 넘깁니다.
 - **하단 도구 창**: Find Usages 결과, Find in Files 결과, Feedback 목록.
 
 ## 단축키
@@ -50,7 +51,8 @@ pkill -f 'orca-diff/server/index[.]ts'
 | 동작 | 키 |
 |---|---|
 | 선언으로 이동 (선언 위에서는 사용처 팝업) | Cmd+클릭, Cmd+B |
-| Find in Files (하단 도구 창) | Cmd+Shift+F, Orca 단축키와 겹치면 Ctrl+Shift+F |
+| 파일·코드 검색 창 | Shift 두 번, Ctrl+P, Cmd+P (Orca 안에서는 Cmd+P가 Orca 단축키로 먼저 처리되므로 Ctrl+P를 씀. 에디터에서 선택한 텍스트가 검색어로 들어감) |
+| Find in Files (하단 도구 창) | Cmd+Shift+F, Orca 단축키와 겹치면 Ctrl+Shift+F. 검색 창에서는 ⌘Enter. 결과는 ↑↓로 고르고 Enter로 엶 |
 | Find Usages (하단 도구 창) | fn+⌥+F7 (Mac은 F7이 미디어 키라 fn 필요), 또는 우클릭 → 사용처 찾기 |
 | 뒤로 / 앞으로 | Alt+← / Alt+→, 마우스 뒤로/앞으로 버튼 (일반 브라우저에서는 Cmd+[ / Cmd+]도 동작) |
 | 라인 코멘트 | diff 라인 번호 클릭, 드래그 또는 Shift+클릭으로 범위 |
