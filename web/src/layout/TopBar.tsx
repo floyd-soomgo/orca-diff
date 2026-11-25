@@ -1,4 +1,4 @@
-import { FileFinder } from './FileFinder.tsx';
+import { SearchEverywhere } from './SearchEverywhere.tsx';
 import { useEffect, useState } from 'react';
 import { type Branches, getBranches, getWorktrees, KEY, WT } from '../api.ts';
 import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
@@ -62,7 +62,7 @@ export function TopBar() {
           />
         </svg>
       </button>
-      <FileFinder />
+      <SearchEverywhere />
       <FontSettingsButton />
     </div>
   );

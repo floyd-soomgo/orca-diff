@@ -6,7 +6,7 @@ export type Tab =
   | { id: string; kind: 'file'; path: string; reveal?: { line: number; column: number } };
 
 export type CommitSelection = { mode: 'worktree' } | { mode: 'commits'; shas: string[] }; // shas: 최신 → 오래된 순
-export type BottomPanel = 'usages' | 'feedback' | null;
+export type BottomPanel = 'usages' | 'search' | 'feedback' | null;
 export interface NavEntry { path: string; line: number; column: number; tabId?: string | null }
 export interface Toast { id: number; message: string; tone: 'info' | 'error' }
 
