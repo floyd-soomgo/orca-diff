@@ -166,9 +166,11 @@ export function useGlobalNavKeys() {
     const back = () => useStore.getState().goBack(currentLocation);
     const forward = () => useStore.getState().goForward(currentLocation);
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      // Monaco 에디터도 내부적으로 textarea를 쓰므로 에디터 밖의 입력란만 제외한다
-      const inTextInput = !!target?.matches('input, textarea, select, [contenteditable]') && !target.closest('.monaco-editor');
+      const target = e.target;
+      // 읽기 전용 Monaco 뷰어는 키 입력을 받기 위해 내부 textarea에 포커스를 둔다.
+      const inTextInput = target instanceof HTMLElement
+        && (target.isContentEditable || target.matches('input, textarea, select'))
+        && !target.matches('.monaco-editor textarea.inputarea[readonly]');
       const action = navKeyAction({ key: e.key, metaKey: e.metaKey, altKey: e.altKey, inTextInput });
       if (!action) return;
       e.preventDefault();

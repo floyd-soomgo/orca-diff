@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFile, spawn } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
 import { openSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +7,8 @@ import { promisify } from 'node:util';
 import { CONFIG_DIR, loadOrCreateKey, PORT } from '../server/config.ts';
 
 const exec = promisify(execFile);
-const serverEntry = join(dirname(fileURLToPath(import.meta.url)), '..', 'server', 'index.ts');
+const installationRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const serverEntry = join(installationRoot, 'server', 'index.ts');
 
 async function isHealthy(key: string): Promise<boolean> {
   try {
@@ -79,30 +80,59 @@ async function toplevel(dir: string): Promise<string | null> {
   }
 }
 
-const USAGE = `사용법: orca-diff [경로] [--restart] [--help]
+async function updateInstallation() {
+  if (await toplevel(installationRoot) !== installationRoot) {
+    throw new Error(`orca-diff 설치 경로가 git 클론의 루트가 아닙니다. (${installationRoot})`);
+  }
 
-에이전트가 만든 변경을 리뷰하는 로컬 git 리뷰 화면을 엽니다. 읽기 전용이라 git에 아무것도 쓰지 않습니다.
+  const git = async (...args: string[]) => (await exec('git', args, { cwd: installationRoot })).stdout.trim();
+  if (await git('status', '--porcelain', '--untracked-files=normal')) {
+    throw new Error(`설치 클론에 로컬 변경이 있습니다. 변경을 정리한 뒤 다시 실행하세요. (${installationRoot})`);
+  }
+
+  const defaultBranch = await git('symbolic-ref', '--short', 'refs/remotes/origin/HEAD').catch(() => '');
+  const branch = await git('branch', '--show-current');
+  const upstream = await git('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}').catch(() => '');
+  if (!defaultBranch || defaultBranch !== `origin/${branch}` || upstream !== defaultBranch) {
+    throw new Error(`설치 클론에서 origin의 기본 브랜치를 추적하는 로컬 기본 브랜치를 체크아웃한 뒤 다시 실행하세요. (${installationRoot})`);
+  }
+
+  const result = spawnSync('npm', ['run', 'update'], { cwd: installationRoot, stdio: 'inherit' });
+  if (result.error) throw result.error;
+  process.exitCode = result.status ?? 1;
+}
+
+const USAGE = `사용법: orca-diff [경로] [--restart] [--update] [--help]
+
+에이전트가 만든 변경을 리뷰하는 로컬 git 리뷰 화면을 엽니다. 리뷰 화면은 git에 아무것도 쓰지 않습니다.
 
   orca-diff              지금 폴더의 저장소를 리뷰합니다. 탭은 지금 워크트리의 Orca 탭으로 엽니다.
   orca-diff <경로>       <경로>의 저장소를 리뷰합니다. 탭은 지금 워크트리의 Orca 탭으로 엽니다.
                          리뷰 피드백은 지금 워크트리의 에이전트 터미널로 보내고,
                          파일 경로가 어느 저장소 기준인지 피드백 머리글에 적습니다.
   orca-diff --restart    실행 중인 리뷰 서버를 새 코드로 다시 띄웁니다. 탭은 열지 않습니다.
+  orca-diff --update     설치 클론을 업데이트하고 빌드한 뒤 리뷰 서버를 다시 띄웁니다.
   orca-diff --help, -h   이 도움말을 출력합니다.
 
 Orca가 없으면 기본 브라우저로 엽니다. 서버 포트는 ${PORT}이고 ORCA_REVIEW_PORT로 바꿀 수 있습니다.`;
 
 async function main() {
-  const flags = process.argv.slice(2).filter((a) => a.startsWith('-'));
+  const args = process.argv.slice(2);
+  const flags = args.filter((a) => a.startsWith('-'));
   if (flags.includes('--help') || flags.includes('-h')) {
     console.log(USAGE);
     return;
   }
   // 모르는 옵션이 오면 사용법을 보여 주고 종료합니다. 오타 난 옵션을 무시한 채 서버를 띄우고 탭을 여는 일을 막습니다.
-  const unknown = flags.find((f) => f !== '--restart');
+  const unknown = flags.find((f) => f !== '--restart' && f !== '--update');
   if (unknown) {
     console.error(`알 수 없는 옵션입니다: ${unknown}\n\n${USAGE}`);
     process.exit(1);
+  }
+  if (flags.includes('--update')) {
+    if (args.length !== 1) throw new Error('--update는 경로나 다른 옵션 없이 단독으로 실행하세요.');
+    await updateInstallation();
+    return;
   }
   if (flags.includes('--restart')) {
     await restartServer(loadOrCreateKey());
@@ -110,7 +140,7 @@ async function main() {
     return;
   }
   // 인자로 준 경로의 저장소를 리뷰하고, 탭은 지금 폴더의 Orca 워크트리에 엽니다
-  const target = process.argv.slice(2).find((a) => !a.startsWith('-'));
+  const target = args.find((a) => !a.startsWith('-'));
   const host = await toplevel(process.cwd());
   const wt = target ? await toplevel(resolve(target)) : host;
   if (!wt) {
