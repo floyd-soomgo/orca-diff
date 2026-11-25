@@ -1,14 +1,10 @@
 import { SearchEverywhere } from './SearchEverywhere.tsx';
 import { useEffect, useState } from 'react';
 import { type Branches, getBranches, getWorktrees, HOST, KEY, WT } from '../api.ts';
-import moonIcon from '../assets/moon.svg';
-import sunIcon from '../assets/sun.svg';
 import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
-import { useTheme } from '../settings/theme.ts';
 import { useStore } from '../store.ts';
 
 export function TopBar() {
-  const { theme, toggle: toggleTheme } = useTheme();
   const { branch, base, setBranch, refresh, toast } = useStore();
   const [worktrees, setWorktrees] = useState<{ path: string; branch: string | null }[]>([]);
   const [branches, setBranches] = useState<Branches | null>(null);
@@ -67,9 +63,6 @@ export function TopBar() {
         </svg>
       </button>
       <SearchEverywhere />
-      <button className="icon-button" onClick={toggleTheme} title={theme === 'dark' ? '라이트 테마로 전환' : '다크 테마로 전환'} aria-label="테마 전환">
-        <span className="icon-mask" style={{ maskImage: `url("${theme === 'dark' ? sunIcon : moonIcon}")` }} aria-hidden="true" />
-      </button>
       <FontSettingsButton />
     </div>
   );
