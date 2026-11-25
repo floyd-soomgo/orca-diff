@@ -51,7 +51,7 @@ async function openUrl(url: string, wt: string): Promise<void> {
       if (shown !== wt) await exec('orca', ['goto', '--url', url, '--page', existing.page]);
       return;
     }
-    await exec('orca', ['tab', 'create', '--url', url, '--worktree', `path:${wt}`, '--focus']);
+    await exec('orca', ['tab', 'create', '--url', url, '--worktree', `path:${wt}`]);
     return;
   } catch {
     // Orca가 없거나 실패하면 기본 브라우저로 연다
