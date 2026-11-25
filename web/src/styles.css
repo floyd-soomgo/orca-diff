@@ -43,8 +43,9 @@ button { border-radius: 6px; padding: 3px 10px; }
 .app { display: flex; flex-direction: column; height: 100%; }
 .topbar { display: flex; gap: 12px; align-items: center; padding: 6px 8px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: nowrap; min-width: 0; }
 .topbar label { display: flex; gap: 6px; align-items: center; color: var(--dim); }
-.topbar select { width: 180px; max-width: 180px; text-overflow: ellipsis; }
-.topbar label { flex: none; }
+/* 넓은 화면에서는 360px, 좁으면 96px까지 줄어들어 오른쪽 버튼을 밀어내지 않습니다 */
+.topbar select { flex: 0 1 auto; width: 360px; min-width: 96px; text-overflow: ellipsis; }
+.topbar label { flex: 0 1 auto; min-width: 0; }
 .topbar .icon-button { flex: none; }
 .topbar .topbar-spacer { flex: 1; }
 .topbar select, .topbar > button, .topbar .icon-button { height: 28px; }
