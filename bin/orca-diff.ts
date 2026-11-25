@@ -79,8 +79,32 @@ async function toplevel(dir: string): Promise<string | null> {
   }
 }
 
+const USAGE = `사용법: orca-diff [경로] [--restart] [--help]
+
+에이전트가 만든 변경을 리뷰하는 로컬 git 리뷰 화면을 엽니다. 읽기 전용이라 git에 아무것도 쓰지 않습니다.
+
+  orca-diff              지금 폴더의 저장소를 리뷰합니다. 탭은 지금 워크트리의 Orca 탭으로 엽니다.
+  orca-diff <경로>       <경로>의 저장소를 리뷰합니다. 탭은 지금 워크트리의 Orca 탭으로 엽니다.
+                         리뷰 피드백은 지금 워크트리의 에이전트 터미널로 보내고,
+                         파일 경로가 어느 저장소 기준인지 피드백 머리글에 적습니다.
+  orca-diff --restart    실행 중인 리뷰 서버를 새 코드로 다시 띄웁니다. 탭은 열지 않습니다.
+  orca-diff --help, -h   이 도움말을 출력합니다.
+
+Orca가 없으면 기본 브라우저로 엽니다. 서버 포트는 ${PORT}이고 ORCA_REVIEW_PORT로 바꿀 수 있습니다.`;
+
 async function main() {
-  if (process.argv.includes('--restart')) {
+  const flags = process.argv.slice(2).filter((a) => a.startsWith('-'));
+  if (flags.includes('--help') || flags.includes('-h')) {
+    console.log(USAGE);
+    return;
+  }
+  // 모르는 옵션이 오면 사용법을 보여 주고 종료합니다. 오타 난 옵션을 무시한 채 서버를 띄우고 탭을 여는 일을 막습니다.
+  const unknown = flags.find((f) => f !== '--restart');
+  if (unknown) {
+    console.error(`알 수 없는 옵션입니다: ${unknown}\n\n${USAGE}`);
+    process.exit(1);
+  }
+  if (flags.includes('--restart')) {
     await restartServer(loadOrCreateKey());
     console.log(`서버를 새 코드로 다시 띄웠습니다 (포트 ${PORT}). 열려 있는 탭은 새로 고치세요.`);
     return;
