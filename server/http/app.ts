@@ -5,6 +5,7 @@ import { extname, join } from 'node:path';
 import { assertInside, BadRequest, listChanges, readFilePair, readPatch } from '../git/changes.ts';
 import { listBranches, listCommits, listWorktrees, resolveBaseRef } from '../git/history.ts';
 import { git, GitError } from '../git/run.ts';
+import { searchCode } from '../search.ts';
 import { definition, type NavQuery, references } from '../ts/navigation.ts';
 import type { Change, ChangeStatus, Source } from '../shared/types.ts';
 
@@ -100,6 +101,16 @@ const coreRoutes: Routes = {
   'GET /api/patch': ({ wt, query }) => readPatch(wt, parseSource(query.get('source')), parseChange(query, wt)),
   'POST /api/definition': ({ wt, body }) => definition(wt, parseNavQuery(body)),
   'POST /api/references': ({ wt, body }) => references(wt, parseNavQuery(body)),
+  'GET /api/search': ({ wt, query }) => {
+    const q = query.get('q') ?? '';
+    if (!q.trim()) throw new BadRequest('검색어가 필요합니다');
+    return searchCode(wt, {
+      query: q,
+      caseSensitive: query.get('case') === '1',
+      regex: query.get('regex') === '1',
+      wholeWord: query.get('word') === '1',
+    });
+  },
   'GET /api/file': async ({ wt, query }) => ({ content: await readFile(assertInside(wt, query.get('path') ?? ''), 'utf8') }),
 };
 
