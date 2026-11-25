@@ -1,4 +1,4 @@
-import { FileFinder } from './FileFinder.tsx';
+import { FileFinder } from './SearchEverywhere.tsx';
 import { useEffect, useState } from 'react';
 import { type Branches, getBranches, getWorktrees, KEY, WT } from '../api.ts';
 import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
