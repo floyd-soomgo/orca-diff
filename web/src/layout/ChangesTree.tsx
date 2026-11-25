@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Change, Source } from '../../../server/shared/types.ts';
-import { getChanges } from '../api.ts';
+import type { Change, Commit, Source } from '../../../server/shared/types.ts';
+import { getChanges, getCommits } from '../api.ts';
 import { copyText, useContextMenu } from '../contextMenu.tsx';
-import { useFeedback } from '../feedback/storage.ts';
-import { commitsSource, useStore } from '../store.ts';
+import { formatCommitMessage } from '../feedback/format.ts';
+import { openCommitDialog, useFeedback } from '../feedback/storage.ts';
+import { commitsSource, sourceKey, useStore } from '../store.ts';
 import { buildChangeTree, collectDirPaths, type DirNode } from './changeTree.ts';
 
 const POLL_MS = 3000;
@@ -70,6 +71,18 @@ function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: 
 
 export function ChangesTree() {
   const { selection, openDiff, openFile, refreshTick, toast } = useStore();
+  const selectedSha = selection.mode === 'commits' && selection.shas.length === 1 ? selection.shas[0] : null;
+  const [commit, setCommit] = useState<Commit>();
+  const detail = commit?.sha === selectedSha ? commit : undefined;
+
+  useEffect(() => {
+    if (!selectedSha) return;
+    let cancelled = false;
+    getCommits({ ref: selectedSha, base: null, skip: 0, limit: 1 })
+      .then(([result]) => { if (!cancelled) setCommit(result); })
+      .catch((e: Error) => { if (!cancelled) toast(`커밋 상세 조회 실패: ${e.message}`, 'error'); });
+    return () => { cancelled = true; };
+  }, [selectedSha, toast]);
 
   const openFileMenu = (source: Source, c: Change, e: React.MouseEvent) => {
     e.preventDefault();
@@ -92,14 +105,27 @@ export function ChangesTree() {
   const [searchCollapsed, setSearchCollapsed] = useState<Set<string>>(new Set());
   const collapsed = query ? searchCollapsed : normalCollapsed;
   const setCollapsed = query ? setSearchCollapsed : setNormalCollapsed;
-  const trees = useMemo(() => groups.map((group) => {
-    const changes = group.changes.filter(({ path }) => {
-      const name = path.slice(path.lastIndexOf('/') + 1).toLowerCase();
-      if (query.startsWith('*.')) return name.endsWith(query.slice(1));
-      return query.startsWith('.') ? name.endsWith(query) : name.includes(query);
+  const sources = useMemo<{ title: string; source: Source }[]>(() => {
+    if (selection.mode === 'worktree') {
+      return [
+        { title: 'Unstaged', source: { kind: 'unstaged' } },
+        { title: 'Staged', source: { kind: 'staged' } },
+      ];
+    }
+    return [{ title: 'Changes', source: commitsSource(selection.shas) }];
+  }, [selection]);
+
+  const trees = useMemo(() => {
+    const currentGroups = groups.filter(({ source }) => sources.some((entry) => sourceKey(entry.source) === sourceKey(source)));
+    return currentGroups.map((group) => {
+      const changes = group.changes.filter(({ path }) => {
+        const name = path.slice(path.lastIndexOf('/') + 1).toLowerCase();
+        if (query.startsWith('*.')) return name.endsWith(query.slice(1));
+        return query.startsWith('.') ? name.endsWith(query) : name.includes(query);
+      });
+      return { group: { ...group, changes }, tree: buildChangeTree(changes) };
     });
-    return { group: { ...group, changes }, tree: buildChangeTree(changes) };
-  }), [groups, query]);
+  }, [groups, query, sources]);
   const toggle = (key: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -109,16 +135,6 @@ export function ChangesTree() {
     });
   const collapseAll = () => setCollapsed(new Set(trees.flatMap(({ group, tree }) => collectDirPaths(tree).map((p) => keyOf(group.title, p)))));
   const expandAll = () => setCollapsed(new Set());
-
-  const sources = useMemo<{ title: string; source: Source }[]>(() => {
-    if (selection.mode === 'worktree') {
-      return [
-        { title: 'Unstaged', source: { kind: 'unstaged' } },
-        { title: 'Staged', source: { kind: 'staged' } },
-      ];
-    }
-    return [{ title: selection.shas.length > 1 ? `커밋 ${selection.shas.length}개` : 'Changes', source: commitsSource(selection.shas) }];
-  }, [selection]);
 
   useEffect(() => {
     let cancelled = false;
@@ -203,6 +219,25 @@ export function ChangesTree() {
           </button>
         </span>
       </div>
+      )}
+      {detail ? (
+        <details className="changes-selection" key={detail.sha} open>
+          <summary title={detail.subject}>{detail.subject}</summary>
+          <div className="commit-detail">
+            <div className="commit-detail-who">
+              <code>{detail.sha.slice(0, 7)}</code> · {detail.author} &lt;{detail.email}&gt;
+            </div>
+            <pre>{formatCommitMessage(detail)}</pre>
+            <div className="commit-detail-footer">
+              <span className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</span>
+              <button onClick={() => openCommitDialog(detail)}>💬 커밋에 코멘트</button>
+            </div>
+          </div>
+        </details>
+      ) : (
+        <div className="changes-selection">
+          {selection.mode === 'worktree' ? 'Working tree' : `커밋 ${selection.shas.length}개`}
+        </div>
       )}
       <div className="list">
         {trees.map(({ group: g, tree }) => {

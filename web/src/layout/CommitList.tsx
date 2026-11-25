@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Commit } from '../../../server/shared/types.ts';
 import { getCommits } from '../api.ts';
 import { copyText, useContextMenu } from '../contextMenu.tsx';
-import { useFeedback } from '../feedback/storage.ts';
+import { formatCommitMessage } from '../feedback/format.ts';
+import { openCommitDialog } from '../feedback/storage.ts';
 import { useStore } from '../store.ts';
 
 const PAGE = 200;
@@ -19,27 +20,19 @@ export function relativeTime(epochSec: number): string {
   return '방금 전';
 }
 
-const fullMessage = (c: Commit) => (c.body ? `${c.subject}\n\n${c.body}` : c.subject);
-
-function openCommitDialog(c: Commit) {
-  useFeedback.getState().openDialog({ kind: 'commit', sha: c.sha, subject: c.subject }, undefined, '', fullMessage(c));
-}
-
 function openCommitMenu(c: Commit, e: React.MouseEvent) {
   e.preventDefault();
   useContextMenu.getState().open(e.clientX, e.clientY, [
     { label: '커밋에 코멘트', onSelect: () => openCommitDialog(c) },
     'separator',
     { label: '해시 복사', onSelect: () => copyText(c.sha, '해시') },
-    { label: '메시지 복사', onSelect: () => copyText(fullMessage(c), '메시지') },
+    { label: '메시지 복사', onSelect: () => copyText(formatCommitMessage(c), '메시지') },
   ]);
 }
 
 export function CommitList() {
   const { branch, base, baseOnly, setBaseOnly, filter, setFilter, selection, select, refresh, refreshTick, toast } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
-  // 상세를 × 로 닫은 커밋(다시 고르면 다시 보인다)
-  const [closedSha, setClosedSha] = useState<string | null>(null);
   const [commits, setCommits] = useState<Commit[]>([]);
   const [done, setDone] = useState(false);
   const loading = useRef(false);
@@ -81,7 +74,6 @@ export function CommitList() {
   const selectedShas = selection.mode === 'commits' ? selection.shas : [];
 
   const onClick = (idx: number, e: React.MouseEvent) => {
-    setClosedSha(null);
     if (e.shiftKey && anchor.current !== null) {
       const [a, b] = [Math.min(anchor.current, idx), Math.max(anchor.current, idx)];
       select({ mode: 'commits', shas: visible.slice(a, b + 1).map((c) => c.sha) });
@@ -95,8 +87,6 @@ export function CommitList() {
     const el = e.currentTarget;
     if (!done && el.scrollTop + el.clientHeight > el.scrollHeight - 200) load(commits.length);
   };
-
-  const detail = selectedShas.length === 1 ? commits.find((c) => c.sha === selectedShas[0]) : undefined;
 
   return (
     <div className="commit-list">
@@ -205,25 +195,6 @@ export function CommitList() {
         ))}
         {visible.length === 0 && <div className="empty">{commits.length === 0 ? '커밋이 없습니다' : '검색 결과가 없습니다'}</div>}
       </div>
-      {detail && detail.sha !== closedSha && (
-        <div className="commit-detail" key={detail.sha}>
-          <div className="commit-detail-header">
-            <span className="commit-detail-who">
-              {detail.sha.slice(0, 10)} · {detail.author} &lt;{detail.email}&gt;
-            </span>
-            <button className="icon-button small" title="커밋 상세 닫기" aria-label="커밋 상세 닫기" onClick={() => setClosedSha(detail.sha)}>
-              ×
-            </button>
-          </div>
-          <pre>{detail.subject}{detail.body ? `\n\n${detail.body}` : ''}</pre>
-          <div className="commit-detail-footer">
-            <span className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</span>
-            <button onClick={() => openCommitDialog(detail)}>
-              💬 커밋에 코멘트
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

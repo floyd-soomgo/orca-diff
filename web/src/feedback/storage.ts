@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+import type { Commit } from '../../../server/shared/types.ts';
 import { getComments, saveComments as saveCommentsApi, WT } from '../api.ts';
 import { getPref, setPref } from '../prefs.ts';
 import { useStore } from '../store.ts';
+import { formatCommitMessage } from './format.ts';
 import type { CommentTarget, ReviewComment } from './model.ts';
 
 const legacyCommentsKey = (wt: string) => `orca-review:comments:${wt}`;
@@ -87,3 +89,8 @@ export const useFeedback = create<FeedbackState>((set, get) => {
     closeDialog: () => set({ dialog: null }),
   };
 });
+
+export function openCommitDialog(commit: Commit) {
+  const { sha, subject } = commit;
+  useFeedback.getState().openDialog({ kind: 'commit', sha, subject }, undefined, '', formatCommitMessage(commit));
+}
