@@ -36,7 +36,9 @@ function formatOne(c: ReviewComment, n: number): string {
 }
 
 // 에이전트 입력창에 한 덩어리로 넣을 마크다운 메시지
-export function formatFeedback(comments: ReviewComment[], ctx: { wt: string; branch: string | null }): string {
+// host가 리뷰 대상과 다르면 받는 에이전트의 작업 폴더도 다르므로, 경로의 기준 저장소를 밝힙니다.
+export function formatFeedback(comments: ReviewComment[], ctx: { wt: string; host?: string; branch: string | null }): string {
   const header = `## 코드 리뷰 피드백 (${ctx.branch ? `${ctx.branch}, ` : ''}${comments.length}건)`;
-  return [header, ...comments.map((c, i) => formatOne(c, i + 1))].join('\n\n');
+  const repo = ctx.host && ctx.host !== ctx.wt ? [`아래 경로는 \`${ctx.wt}\` 저장소 기준입니다.`] : [];
+  return [header, ...repo, ...comments.map((c, i) => formatOne(c, i + 1))].join('\n\n');
 }

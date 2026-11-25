@@ -15,7 +15,9 @@
     "test": "vitest run",
     "typecheck": "tsc -p . && tsc -p web",
     "dev": "vite --config web/vite.config.ts",
-    "build": "vite build --config web/vite.config.ts"
+    "build": "vite build --config web/vite.config.ts",
+    "reload": "npm run build && node bin/orca-diff.ts --restart",
+    "update": "git pull --ff-only && npm ci && npm run reload"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

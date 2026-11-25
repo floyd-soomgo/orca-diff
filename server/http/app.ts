@@ -11,6 +11,9 @@ import type { Change, ChangeStatus, Source } from '../shared/types.ts';
 
 export interface RequestContext {
   wt: string;
+  // 탭을 연 Orca 워크트리입니다. 피드백을 보낼 터미널을 여기서 찾습니다. 따로 주지 않으면 wt와 같습니다.
+  // 준 경로가 워크트리가 아니게 되면(삭제 등) null이고, 터미널 기능만 쓸 수 없습니다.
+  host: string | null;
   query: URLSearchParams;
   body: unknown;
 }
@@ -181,8 +184,10 @@ export function createApp(opts: { key: string; staticDir: string | null; routes?
       const rawWt = url.searchParams.get('wt') ?? (body as { wt?: string } | null)?.wt ?? null;
       const wt = await resolveWt(rawWt);
       if (!wt) return send(res, 400, { error: '유효한 워크트리가 아닙니다' });
+      const rawHost = url.searchParams.get('host');
+      const host = rawHost ? await resolveWt(rawHost) : wt;
 
-      send(res, 200, await handler({ wt, query: url.searchParams, body }));
+      send(res, 200, await handler({ wt, host, query: url.searchParams, body }));
     } catch (e) {
       if (e instanceof BadRequest) return send(res, 400, { error: e.message });
       if (e instanceof GitError) return send(res, 500, { error: e.message });
