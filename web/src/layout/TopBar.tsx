@@ -4,7 +4,12 @@ import { type Branches, getBranches, getWorktrees, HOST, KEY, WT } from '../api.
 import { FontSettingsButton } from '../settings/FontSettingsButton.tsx';
 import { useStore } from '../store.ts';
 
-export function TopBar() {
+interface Props {
+  leftPaneVisible: boolean;
+  onToggleLeftPane: () => void;
+}
+
+export function TopBar({ leftPaneVisible, onToggleLeftPane }: Props) {
   const { branch, base, setBranch, toast } = useStore();
   const [worktrees, setWorktrees] = useState<{ path: string; branch: string | null }[]>([]);
   const [branches, setBranches] = useState<Branches | null>(null);
@@ -27,9 +32,24 @@ export function TopBar() {
   const switchWorktree = (path: string) => {
     location.search = `?${new URLSearchParams({ key: KEY, wt: path, ...(HOST ? { host: HOST } : {}) })}`;
   };
+  const leftPaneLabel = leftPaneVisible ? '왼쪽 패널 숨기기' : '왼쪽 패널 보이기';
 
   return (
     <div className="topbar">
+      <button
+        type="button"
+        className="icon-button"
+        title={leftPaneLabel}
+        aria-label={leftPaneLabel}
+        aria-expanded={leftPaneVisible}
+        aria-controls="left-pane"
+        onClick={onToggleLeftPane}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+          <rect x="2" y="3" width="12" height="10" rx="1.5" />
+          <path d="M6 3v10" />
+        </svg>
+      </button>
       <label>
         워크트리
         <select value={WT} onChange={(e) => switchWorktree(e.target.value)}>
