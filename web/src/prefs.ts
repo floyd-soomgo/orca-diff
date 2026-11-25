@@ -22,18 +22,19 @@ export function getPref<T>(key: string, fallback: T): T {
 }
 
 // 드래그처럼 연속으로 바뀌는 값은 마지막 값만 저장한다
-export function setPref(key: string, value: unknown): void {
+export function setPref(key: string, value: unknown, { immediate = false }: { immediate?: boolean } = {}): void {
   cache[key] = value;
   clearTimeout(timers.get(key));
-  timers.set(
-    key,
-    setTimeout(() => {
-      const q = query();
-      fetch(`/api/prefs?${new URLSearchParams({ key: q.get('key') ?? '' })}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ wt: q.get('wt'), key, value }),
-      }).catch(() => undefined);
-    }, SAVE_DELAY_MS),
-  );
+  const save = () => {
+    timers.delete(key);
+    const q = query();
+    fetch(`/api/prefs?${new URLSearchParams({ key: q.get('key') ?? '' })}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ wt: q.get('wt'), key, value }),
+      keepalive: immediate,
+    }).catch(() => undefined);
+  };
+  if (immediate) save();
+  else timers.set(key, setTimeout(save, SAVE_DELAY_MS));
 }

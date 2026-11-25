@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { type DiffAttachContext, DiffTab } from './diff/DiffTab.tsx';
 import { FileTab } from './diff/FileTab.tsx';
 import { BottomPanel } from './layout/BottomPanel.tsx';
@@ -17,6 +18,7 @@ import { NavLoadingIndicator } from './nav/NavLoadingIndicator.tsx';
 import { UsagesPopup } from './nav/UsagesPopup.tsx';
 import { attachNavigation, type NavHandle, useGlobalNavKeys } from './nav/useNavigation.ts';
 import { monaco } from './monaco/setup.ts';
+import { getPref, setPref } from './prefs.ts';
 import { type Tab, useStore } from './store.ts';
 
 interface EditorMenuOptions {
@@ -163,6 +165,7 @@ function Toasts() {
 }
 
 export function App() {
+  const [leftPaneVisible, setLeftPaneVisible] = useState(() => getPref('leftPaneVisible', true));
   const [leftWidth, setLeftWidth] = usePanelSize('left', 360);
   const [commitsHeight, setCommitsHeight] = usePanelSize('commits', 320);
   const [bottomHeight, setBottomHeight] = usePanelSize('bottom', 220);
@@ -171,11 +174,17 @@ export function App() {
   useFindInFilesKey();
   const unsentCount = useFeedback((s) => s.comments.filter((c) => !c.sentAt).length);
 
+  const toggleLeftPane = () => {
+    const visible = !leftPaneVisible;
+    setLeftPaneVisible(visible);
+    setPref('leftPaneVisible', visible, { immediate: true });
+  };
+
   return (
     <div className="app">
-      <TopBar />
-      <div className="main">
-        <div className="left-pane" style={{ width: leftWidth }}>
+      <TopBar leftPaneVisible={leftPaneVisible} onToggleLeftPane={toggleLeftPane} />
+      <div className={leftPaneVisible ? 'main' : 'main left-pane-hidden'}>
+        <div id="left-pane" className="left-pane" style={{ width: leftWidth }}>
           <div style={{ height: commitsHeight, display: 'flex' }}>
             <CommitList />
           </div>

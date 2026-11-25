@@ -18,6 +18,7 @@ export function FeedbackPanel() {
   const { comments, remove, markSent, openDialog } = useFeedback();
   const { toast, openDiff, select } = useStore();
   const [showSent, setShowSent] = useState(false);
+  const [selectedSentIdList, setSelectedSentIdList] = useState<string[]>([]);
   const [orca, setOrca] = useState<boolean | null>(null);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [target, setTarget] = useState<string>(() => loadTarget(HOST || WT) ?? '');
@@ -48,12 +49,13 @@ export function FeedbackPanel() {
 
   const unsent = comments.filter((c) => !c.sentAt);
   const visible = showSent ? comments : unsent;
+  const selectedSentCommentList = comments.filter((c) => c.sentAt && selectedSentIdList.includes(c.id));
 
   // Orca가 있고 대상 터미널이 있으면 입력창에 넣고, 아니면 클립보드에 복사한다
   const canSend = orca === true && target !== '';
-  const deliver = async () => {
-    if (unsent.length === 0) return;
-    const text = formatFeedback(unsent, { wt: WT, host: HOST, branch });
+  const deliver = async (commentList: ReviewComment[]) => {
+    if (commentList.length === 0) return;
+    const text = formatFeedback(commentList, { wt: WT, host: HOST, branch });
     setSending(true);
     try {
       if (canSend) {
@@ -64,7 +66,9 @@ export function FeedbackPanel() {
         await navigator.clipboard.writeText(text);
         toast('클립보드에 복사했습니다');
       }
-      markSent(unsent.map((c) => c.id));
+      const deliveredIdList = commentList.map((c) => c.id);
+      markSent(deliveredIdList);
+      setSelectedSentIdList((ids) => ids.filter((id) => !deliveredIdList.includes(id)));
     } catch (e) {
       toast(`보내기 실패: ${(e as Error).message}`, 'error');
     } finally {
@@ -103,13 +107,21 @@ export function FeedbackPanel() {
             <button className="icon-button" onClick={loadTerminals} title="터미널 목록 새로고침" aria-label="터미널 목록 새로고침">↻</button>
           </>
         )}
-        <button className="primary" disabled={unsent.length === 0 || sending} onClick={deliver}>
+        <button className="primary" disabled={unsent.length === 0 || sending} onClick={() => deliver(unsent)}>
           {canSend ? `입력창에 넣기 (${unsent.length})` : `클립보드에 복사 (${unsent.length})`}
         </button>
         <label>
-          <input type="checkbox" checked={showSent} onChange={(e) => setShowSent(e.target.checked)} />
+          <input type="checkbox" checked={showSent} onChange={(e) => {
+            setShowSent(e.target.checked);
+            if (!e.target.checked) setSelectedSentIdList([]);
+          }} />
           보낸 항목 보기
         </label>
+        {showSent && (
+          <button disabled={selectedSentCommentList.length === 0 || sending} onClick={() => deliver(selectedSentCommentList)}>
+            {canSend ? '선택 항목 다시 보내기' : '선택 항목 복사'} ({selectedSentCommentList.length})
+          </button>
+        )}
       </div>
       {visible.length === 0 && <div className="empty">diff의 라인 번호를 클릭하거나 드래그해서 코멘트를 다세요</div>}
       {visible.map((c) => (
@@ -121,6 +133,20 @@ export function FeedbackPanel() {
           </div>
           <div className="feedback-body">{c.body}</div>
           <div className="comment-actions">
+            {c.sentAt && (
+              <label onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selectedSentIdList.includes(c.id)}
+                  disabled={sending}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSelectedSentIdList((ids) => checked ? [...ids, c.id] : ids.filter((id) => id !== c.id));
+                  }}
+                />
+                다시 보낼 항목으로 선택
+              </label>
+            )}
             {c.target.kind !== 'line' && (
               <button
                 onClick={(e) => {

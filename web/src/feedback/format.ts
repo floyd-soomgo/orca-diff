@@ -1,8 +1,12 @@
-import type { Source } from '../../../server/shared/types.ts';
+import type { Commit, Source } from '../../../server/shared/types.ts';
 import type { ReviewComment } from './model.ts';
 
 const short = (sha: string) => sha.slice(0, 7);
 const clean = (s: string) => s.replace(/\r/g, '').replace(/\n+$/, '');
+
+export function formatCommitMessage({ subject, body }: Commit): string {
+  return body ? `${subject}\n\n${body}` : subject;
+}
 
 function sourceLabel(source: Source): string {
   if (source.kind === 'unstaged') return '워킹트리 unstaged';

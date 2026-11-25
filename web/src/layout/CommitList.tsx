@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Commit } from '../../../server/shared/types.ts';
 import { getCommits } from '../api.ts';
 import { copyText, useContextMenu } from '../contextMenu.tsx';
-import { useFeedback } from '../feedback/storage.ts';
+import { formatCommitMessage } from '../feedback/format.ts';
+import { openCommitDialog } from '../feedback/storage.ts';
 import { useStore } from '../store.ts';
 
 const PAGE = 200;
+const FOCUS_REFRESH_INTERVAL_MS = 250;
 const rtf = new Intl.RelativeTimeFormat('ko', { numeric: 'auto' });
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60],
@@ -19,36 +21,27 @@ export function relativeTime(epochSec: number): string {
   return '방금 전';
 }
 
-const fullMessage = (c: Commit) => (c.body ? `${c.subject}\n\n${c.body}` : c.subject);
-
-function openCommitDialog(c: Commit) {
-  useFeedback.getState().openDialog({ kind: 'commit', sha: c.sha, subject: c.subject }, undefined, '', fullMessage(c));
-}
-
 function openCommitMenu(c: Commit, e: React.MouseEvent) {
   e.preventDefault();
   useContextMenu.getState().open(e.clientX, e.clientY, [
     { label: '커밋에 코멘트', onSelect: () => openCommitDialog(c) },
     'separator',
     { label: '해시 복사', onSelect: () => copyText(c.sha, '해시') },
-    { label: '메시지 복사', onSelect: () => copyText(fullMessage(c), '메시지') },
+    { label: '메시지 복사', onSelect: () => copyText(formatCommitMessage(c), '메시지') },
   ]);
 }
 
 export function CommitList() {
-  const { branch, base, baseOnly, setBaseOnly, filter, setFilter, selection, select, refreshTick, toast } = useStore();
+  const { branch, base, baseOnly, setBaseOnly, filter, setFilter, selection, select, refresh, refreshTick, toast } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
-  // 상세를 × 로 닫은 커밋(다시 고르면 다시 보인다)
-  const [closedSha, setClosedSha] = useState<string | null>(null);
-  const [commits, setCommits] = useState<Commit[]>([]);
-  const [done, setDone] = useState(false);
+  const [{ commits, done }, setHistory] = useState<{ commits: Commit[]; done: boolean }>({ commits: [], done: false });
   const loading = useRef(false);
   const requestId = useRef(0);
-  const anchor = useRef<number | null>(null);
+  const anchorSha = useRef<string | null>(null);
   const effectiveBase = baseOnly && base && branch !== base ? base : null;
 
   const load = useCallback(
-    async (skip: number) => {
+    async (skip: number, keepLoadedPages = false) => {
       if (!branch) return;
       // 다음 페이지 로드는 중복 요청만 막고, 첫 페이지(브랜치·기준 변경)는 항상 새로 요청한다
       if (skip > 0 && loading.current) return;
@@ -57,8 +50,19 @@ export function CommitList() {
       try {
         const page = await getCommits({ ref: branch, base: effectiveBase, skip, limit: PAGE });
         if (id !== requestId.current) return; // 더 새 요청이 있으면 이 응답은 버린다
-        setCommits((prev) => (skip === 0 ? page : [...prev, ...page]));
-        setDone(page.length < PAGE);
+        setHistory((previous) => {
+          const lastPage = page.length < PAGE;
+          if (skip > 0) return { commits: [...previous.commits, ...page], done: lastPage };
+          if (!keepLoadedPages || lastPage) return { commits: page, done: lastPage };
+
+          // 다시 읽은 첫 페이지와 겹치는 커밋 뒤에 이미 불러온 이력을 이어 붙인다.
+          const lastSha = page[page.length - 1].sha;
+          const overlap = previous.commits.findIndex((commit) => commit.sha === lastSha);
+          if (overlap === -1) return { commits: page, done: false };
+          const pageShas = new Set(page.map((commit) => commit.sha));
+          const older = previous.commits.slice(overlap + 1).filter((commit) => !pageShas.has(commit.sha));
+          return { commits: [...page, ...older], done: previous.done };
+        });
       } catch (e) {
         if (id === requestId.current) toast(`커밋 목록 실패: ${(e as Error).message}`, 'error');
       } finally {
@@ -72,6 +76,22 @@ export function CommitList() {
     load(0);
   }, [load, refreshTick]);
 
+  useEffect(() => {
+    let lastRefreshAt = -Infinity;
+    const refreshOnReturn = () => {
+      const now = performance.now();
+      if (document.hidden || loading.current || now - lastRefreshAt < FOCUS_REFRESH_INTERVAL_MS) return;
+      lastRefreshAt = now;
+      load(0, true);
+    };
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    return () => {
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+    };
+  }, [load]);
+
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return commits;
@@ -81,13 +101,14 @@ export function CommitList() {
   const selectedShas = selection.mode === 'commits' ? selection.shas : [];
 
   const onClick = (idx: number, e: React.MouseEvent) => {
-    setClosedSha(null);
-    if (e.shiftKey && anchor.current !== null) {
-      const [a, b] = [Math.min(anchor.current, idx), Math.max(anchor.current, idx)];
+    const anchorIndex = e.shiftKey ? visible.findIndex((commit) => commit.sha === anchorSha.current) : -1;
+    if (anchorIndex !== -1) {
+      const [a, b] = [Math.min(anchorIndex, idx), Math.max(anchorIndex, idx)];
       select({ mode: 'commits', shas: visible.slice(a, b + 1).map((c) => c.sha) });
     } else {
-      anchor.current = idx;
-      select({ mode: 'commits', shas: [visible[idx].sha] });
+      const sha = visible[idx].sha;
+      anchorSha.current = sha;
+      select({ mode: 'commits', shas: [sha] });
     }
   };
 
@@ -95,8 +116,6 @@ export function CommitList() {
     const el = e.currentTarget;
     if (!done && el.scrollTop + el.clientHeight > el.scrollHeight - 200) load(commits.length);
   };
-
-  const detail = selectedShas.length === 1 ? commits.find((c) => c.sha === selectedShas[0]) : undefined;
 
   return (
     <div className="commit-list">
@@ -130,6 +149,19 @@ export function CommitList() {
         <div className="panel-title panel-title-row">
           <span>Commits</span>
           <span className="panel-actions">
+          <button
+            className="icon-button small"
+            title="커밋과 변경사항 새로고침"
+            aria-label="커밋과 변경사항 새로고침"
+            onClick={refresh}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"
+              />
+            </svg>
+          </button>
           <button
             className={`chip ${baseOnly && base && branch !== base ? 'active' : ''}`}
             aria-label="이 브랜치만"
@@ -169,7 +201,7 @@ export function CommitList() {
         <div
           className={`row ${selection.mode === 'worktree' ? 'selected' : ''}`}
           onClick={() => {
-            anchor.current = null;
+            anchorSha.current = null;
             select({ mode: 'worktree' });
           }}
         >
@@ -192,25 +224,6 @@ export function CommitList() {
         ))}
         {visible.length === 0 && <div className="empty">{commits.length === 0 ? '커밋이 없습니다' : '검색 결과가 없습니다'}</div>}
       </div>
-      {detail && detail.sha !== closedSha && (
-        <div className="commit-detail" key={detail.sha}>
-          <div className="commit-detail-header">
-            <span className="commit-detail-who">
-              {detail.sha.slice(0, 10)} · {detail.author} &lt;{detail.email}&gt;
-            </span>
-            <button className="icon-button small" title="커밋 상세 닫기" aria-label="커밋 상세 닫기" onClick={() => setClosedSha(detail.sha)}>
-              ×
-            </button>
-          </div>
-          <pre>{detail.subject}{detail.body ? `\n\n${detail.body}` : ''}</pre>
-          <div className="commit-detail-footer">
-            <span className="meta">{new Date(detail.time * 1000).toLocaleString('ko-KR')}</span>
-            <button onClick={() => openCommitDialog(detail)}>
-              💬 커밋에 코멘트
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
