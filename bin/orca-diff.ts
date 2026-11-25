@@ -29,6 +29,15 @@ async function ensureServer(key: string): Promise<void> {
   throw new Error(`서버가 시작되지 않았습니다. ${join(CONFIG_DIR, 'server.log')}를 확인하세요 (포트 ${PORT}).`);
 }
 
+// 실행 중인 서버를 끄고, 내려간 것을 확인한 뒤 새 코드로 다시 띄웁니다
+async function restartServer(key: string): Promise<void> {
+  await exec('pkill', ['-f', 'orca-diff/server/index[.]ts']).catch(() => {
+    // 실행 중인 서버가 없으면 pkill이 1로 끝나므로 무시합니다
+  });
+  for (let i = 0; i < 50 && (await isHealthy(key)); i++) await new Promise((r) => setTimeout(r, 100));
+  await ensureServer(key);
+}
+
 // 이 워크트리에 이미 열린 orca-diff 탭이 있으면 그 탭의 페이지 id
 async function findExistingTab(wt: string): Promise<{ page: string; url: string } | null> {
   try {
@@ -60,6 +69,11 @@ async function openUrl(url: string, wt: string): Promise<void> {
 }
 
 async function main() {
+  if (process.argv.includes('--restart')) {
+    await restartServer(loadOrCreateKey());
+    console.log(`서버를 새 코드로 다시 띄웠습니다 (포트 ${PORT}). 열려 있는 탭은 새로 고치세요.`);
+    return;
+  }
   let wt: string;
   try {
     wt = (await exec('git', ['rev-parse', '--show-toplevel'])).stdout.trim();

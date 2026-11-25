@@ -26,17 +26,13 @@ orca-diff
 
 ## 업데이트
 
-처음 설치한 `orca-diff` 저장소에서 최신 코드를 받고 다시 빌드합니다. 같은 폴더와 Node.js 환경을 계속 사용하면 `npm link`는 처음 한 번이면 됩니다.
+처음 설치한 `orca-diff` 저장소에서 아래 명령을 실행합니다. 최신 코드를 받아 빌드하고, 실행 중인 리뷰 서버를 새 코드로 다시 띄웁니다. 열려 있는 orca-diff 탭은 새로 고치면 됩니다. 같은 폴더와 Node.js 환경을 계속 사용하면 `npm link`는 처음 한 번이면 됩니다.
 
 ```bash
-git pull --ff-only && npm ci && npm run build
+npm run update
 ```
 
-빌드가 끝나면 실행 중인 리뷰 서버를 종료하고, 리뷰할 워크트리에서 `orca-diff`를 다시 실행하세요. 서버가 실행 중이 아니면 종료 단계는 건너뜁니다.
-
-```bash
-pkill -f 'orca-diff/server/index[.]ts'
-```
+코드를 직접 고쳤을 때는 `npm run reload`로 빌드하고 서버를 다시 띄웁니다. 빌드 없이 서버만 다시 띄우려면 어느 폴더에서든 `orca-diff --restart`를 실행하세요.
 
 ## 화면
 
