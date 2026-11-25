@@ -1,6 +1,6 @@
 # orca-diff
 
-에이전트가 만든 결과물을 검토하는 로컬 git 리뷰 도구입니다. WebStorm 내장 git 클라이언트처럼 커밋과 워킹트리 diff를 보고, TS/JS 코드를 탐색하고, 라인·파일·커밋 단위 피드백을 에이전트 입력창에 넣을 수 있습니다. 읽기 전용이라 git에 아무것도 쓰지 않습니다.
+에이전트가 만든 결과물을 검토하는 로컬 git 리뷰 도구입니다. WebStorm 내장 git 클라이언트처럼 커밋과 워킹트리 diff를 보고, TS/JS 코드를 탐색하고, 라인, 파일, 커밋 단위 피드백을 에이전트 입력창에 넣을 수 있습니다. 읽기 전용이라 git에 아무것도 쓰지 않습니다.
 
 ## 설치
 
@@ -19,20 +19,20 @@ orca-diff
 ```
 
 - 로컬 서버(`127.0.0.1:4517`, `ORCA_REVIEW_PORT`로 변경)가 없으면 띄우고, 있으면 재사용합니다.
-- Orca가 있으면 그 워크트리의 Orca 브라우저 탭으로, 없으면 기본 브라우저로 엽니다. Orca 탭은 하단/측면 스플릿으로 옮길 수 있습니다.
-- 접속 키는 `~/.orca-review/key`, UI 설정(패널 크기·글꼴·diff 보기 방식, 마지막 피드백 대상)은 `~/.orca-review/prefs.json`, 리뷰 코멘트는 `~/.orca-review/comments.json`(워크트리별)에 저장되어 어느 탭·브라우저에서 열어도 같게 적용됩니다. 서버 로그는 `~/.orca-review/server.log`에 쌓입니다.
+- Orca가 있으면 그 워크트리의 Orca 브라우저 탭으로, 없으면 기본 브라우저로 엽니다. Orca 탭은 하단이나 측면 스플릿으로 옮길 수 있습니다.
+- 접속 키는 `~/.orca-review/key`에, UI 설정(패널 크기, 글꼴, diff 보기 방식, 마지막 피드백 대상)은 `~/.orca-review/prefs.json`에, 리뷰 코멘트는 `~/.orca-review/comments.json`(워크트리별)에 저장합니다. 그래서 어느 탭이나 브라우저에서 열어도 설정과 코멘트가 같게 적용됩니다. 서버 로그는 `~/.orca-review/server.log`에 쌓입니다.
 
 기존 명령 `orca-review`도 같은 CLI를 실행합니다.
 
 ## 업데이트
 
-처음 설치한 `orca-diff` 저장소에서 최신 코드를 받고 다시 빌드합니다. 같은 폴더와 Node.js 환경을 계속 쓰면 `npm link`는 처음 한 번이면 됩니다.
+처음 설치한 `orca-diff` 저장소에서 최신 코드를 받고 다시 빌드합니다. 같은 폴더와 Node.js 환경을 계속 사용하면 `npm link`는 처음 한 번이면 됩니다.
 
 ```bash
 git pull --ff-only && npm ci && npm run build
 ```
 
-빌드가 끝나면 실행 중인 리뷰 서버를 종료하고, 리뷰할 워크트리에서 `orca-diff`를 다시 실행하세요. 서버가 실행 중이지 않으면 종료 단계는 건너뜁니다.
+빌드가 끝나면 실행 중인 리뷰 서버를 종료하고, 리뷰할 워크트리에서 `orca-diff`를 다시 실행하세요. 서버가 실행 중이 아니면 종료 단계는 건너뜁니다.
 
 ```bash
 pkill -f 'orca-diff/server/index[.]ts'
@@ -42,27 +42,27 @@ pkill -f 'orca-diff/server/index[.]ts'
 
 - **왼쪽 위 Commits**: 맨 위 `Working tree`와 선택한 브랜치의 커밋 목록. 제목 줄의 돋보기로 메시지/작성자 필터를 엽니다(Esc로 닫기). 제목 줄의 "이 브랜치만" 브랜치 아이콘을 켜면(기본값) 기준 브랜치 `origin/HEAD`에는 없는 커밋만 보입니다. Shift+클릭으로 범위를 선택하면 합친 diff가 나옵니다. 우클릭하면 커밋 코멘트를 달 수 있습니다.
 - **왼쪽 아래 Changes**: 변경 파일 트리. Working tree는 Unstaged/Staged로 나뉘고, 3초마다 다시 읽습니다.
-- **가운데 탭**: diff 탭(Split/Unified, 변경 뭉치/전체)과 읽기 전용 파일 탭이 있습니다. 탭의 💬로 파일 전체에 코멘트를 답니다.
+- **가운데 탭**: diff 탭(Split/Unified, 변경 뭉치/전체)과 읽기 전용 파일 탭이 있습니다. 탭의 💬 버튼으로 파일 전체에 코멘트를 달 수 있습니다.
 - **검색 창**: Shift를 두 번 누르면 파일 이름과 코드 내용을 함께 찾습니다. 파일은 8개, 코드는 30건까지 보이고, 더 보려면 ⌘Enter로 Find in Files 도구 창으로 넘깁니다.
-- **하단 도구 창**: Find Usages 결과, Find in Files 결과, Feedback 목록.
+- **하단 도구 창**: Find Usages 결과, Find in Files 결과, Feedback 목록이 나옵니다.
 
 ## 단축키
 
 | 동작 | 키 |
 |---|---|
 | 선언으로 이동 (선언 위에서는 사용처 팝업) | Cmd+클릭, Cmd+B |
-| 파일·코드 검색 창 | Shift 두 번, Ctrl+P, Cmd+P (Orca 안에서는 Cmd+P가 Orca 단축키로 먼저 처리되므로 Ctrl+P를 씀. 에디터에서 선택한 텍스트가 검색어로 들어감) |
+| 파일과 코드 검색 창 | Shift 두 번, Ctrl+P, Cmd+P (Orca 안에서는 Orca 단축키가 Cmd+P를 먼저 가져가므로 Ctrl+P를 사용함. 에디터에서 선택한 텍스트가 검색어로 들어감) |
 | Find in Files (하단 도구 창) | Cmd+Shift+F, Orca 단축키와 겹치면 Ctrl+Shift+F. 검색 창에서는 ⌘Enter. 결과는 ↑↓로 고르고 Enter로 엶 |
 | Find Usages (하단 도구 창) | fn+⌥+F7 (Mac은 F7이 미디어 키라 fn 필요), 또는 우클릭 → 사용처 찾기 |
 | 뒤로 / 앞으로 | Alt+← / Alt+→, 마우스 뒤로/앞으로 버튼 (일반 브라우저에서는 Cmd+[ / Cmd+]도 동작) |
 | 라인 코멘트 | diff 라인 번호 클릭, 드래그 또는 Shift+클릭으로 범위 |
 | 코멘트 저장 / 취소 | Cmd+Enter / Esc |
-| 선택한 코드 복사 | Ctrl+C (Cmd+C는 Orca 단축키와 함께 실행됨), 또는 우클릭 → 선택한 텍스트 복사 |
-| 우클릭 메뉴 | 에디터(선언 이동·사용처·코멘트·경로 복사), 변경 파일(diff·워크트리 파일 열기·코멘트·경로 복사), 커밋(코멘트·해시·메시지 복사) |
+| 선택한 코드 복사 | Ctrl+C (Cmd+C를 누르면 Orca 단축키도 함께 실행됨), 또는 우클릭 → 선택한 텍스트 복사 |
+| 우클릭 메뉴 | 에디터(선언 이동, 사용처, 코멘트, 경로 복사), 변경 파일(diff, 워크트리 파일 열기, 코멘트, 경로 복사), 커밋(코멘트, 해시, 메시지 복사) |
 
-코드 탐색은 TS/JS만 지원합니다. 워크트리에 `node_modules/typescript`가 있으면 그걸 쓰고, 없으면 내장 TypeScript 5.9로 tsserver를 띄웁니다. 큰 프로젝트에서는 첫 탐색이 몇 초 걸릴 수 있습니다.
+코드 탐색은 TS/JS만 지원합니다. 워크트리에 `node_modules/typescript`가 있으면 그걸 사용하고, 없으면 내장 TypeScript 5.9로 tsserver를 띄웁니다. 큰 프로젝트에서는 첫 탐색이 몇 초 걸릴 수 있습니다.
 
-코드 내용 검색은 `git grep`으로 하므로 커밋된 파일과 `.gitignore`에 걸리지 않은 새 파일만 찾고, 바이너리 파일은 건너뜁니다. 정규식은 PCRE 문법이며, 결과는 2000건에서 끊습니다.
+코드 내용 검색은 `git grep`을 사용합니다. 그래서 커밋된 파일과 `.gitignore`에 걸리지 않은 새 파일만 찾고, 바이너리 파일은 건너뜁니다. 정규식은 PCRE 문법을 따르며, 결과는 2000건까지만 보여 줍니다.
 
 ## 피드백 보내기
 
@@ -78,7 +78,7 @@ Feedback 탭에서 대상 터미널을 고르고 [입력창에 넣기]를 누르
 ## 개발
 
 ```bash
-npm test          # vitest (git·HTTP·tsserver·피드백 포맷)
+npm test          # vitest (git, HTTP, tsserver, 피드백 포맷)
 npm run typecheck # 서버 + 웹
 npm run dev       # Vite 개발 서버(5173, /api는 4517로 프록시)
 ```
