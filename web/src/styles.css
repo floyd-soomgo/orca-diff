@@ -205,8 +205,10 @@ button.link { border: none; background: none; color: var(--accent); padding: 0; 
 button.primary { background: var(--primary); border-color: var(--primary-border); color: #fff; font-weight: 600; }
 button.primary:hover { background: var(--primary-hover); }
 .feedback-panel { display: flex; flex-direction: column; }
-.feedback-bar { display: flex; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
-.feedback-bar label { display: flex; gap: 4px; align-items: center; color: var(--dim); }
+.feedback-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+.feedback-bar label, .feedback-item label { display: flex; align-items: center; gap: 4px; }
+.feedback-panel label input[type='checkbox'] { margin: 0; }
+.feedback-bar label { color: var(--dim); }
 .feedback-item { padding: 6px 10px; border-bottom: 1px solid var(--border-muted); cursor: pointer; }
 .feedback-item:hover { background: var(--hover); }
 .feedback-item.sent { opacity: 0.6; }
