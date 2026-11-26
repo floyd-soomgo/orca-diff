@@ -4,7 +4,15 @@
 
 ## 설치
 
-Node.js 22.18 이상이 설치된 Mac에서 이 저장소를 복제한 뒤, 저장소 루트에서 한 번 실행하세요.
+Git과 Node.js 22.18 이상이 설치된 Mac에서 아래 명령을 실행하세요.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/floydkim/orca-diff/main/install.sh | bash
+```
+
+설치 스크립트는 저장소를 `~/.local/share/orca-diff`에 복제하고 빌드한 뒤, `~/.local/bin/orca-diff`에 실행 링크를 만듭니다. `~/.local/bin`이 `PATH`에 없으면 셸 설정에 추가하세요. [설치 스크립트 원문](./install.sh)
+
+직접 복제한 저장소를 설치에 쓰려면, 저장소 루트에서 아래 명령을 실행하세요.
 
 ```bash
 npm ci && npm run build && npm link
@@ -30,17 +38,17 @@ orca-diff ~/projects/other-repo
 
 이때 피드백은 탭을 연 워크트리의 터미널로 보냅니다. 받는 에이전트의 작업 폴더와 리뷰 대상이 다르므로, 피드백 머리글에 경로의 기준 저장소를 함께 적습니다.
 
-옵션과 인자는 `orca-diff --help`로 볼 수 있습니다. 기존 명령 `orca-review`도 같은 CLI를 실행합니다.
+옵션과 인자는 `orca-diff --help`로 볼 수 있습니다. `npm link`로 설치했다면 기존 명령 `orca-review`도 같은 CLI를 실행합니다.
 
 ## 업데이트
 
-어느 폴더에서든 아래 명령을 실행하면 설치할 때 `npm link`로 연결한 클론에서 최신 코드를 받고, 의존성을 설치한 뒤 빌드하고 리뷰 서버를 다시 띄웁니다. 열려 있는 orca-diff 탭은 새로고침하세요.
+어느 폴더에서든 아래 명령을 실행하면 설치 클론에서 최신 코드를 받고, 의존성을 설치한 뒤 빌드하고 리뷰 서버를 다시 띄웁니다. 열려 있는 orca-diff 탭은 새로고침하세요.
 
 ```bash
 orca-diff --update
 ```
 
-설치 클론에 로컬 변경이 있거나 `origin`의 기본 브랜치를 추적하는 로컬 기본 브랜치에 있지 않으면 업데이트를 중단합니다. `--update`가 없는 버전은 설치 클론에서 `npm run update`를 한 번 실행하세요. 같은 클론과 Node.js 환경을 계속 쓰면 `npm link`는 처음 한 번이면 됩니다.
+설치 클론에 로컬 변경이 있거나 `origin`의 기본 브랜치를 추적하는 로컬 기본 브랜치에 있지 않으면 업데이트를 중단합니다. `--update`가 없는 버전은 설치 클론에서 `npm run update`를 한 번 실행하세요.
 
 코드를 직접 고쳤을 때는 설치 클론에서 `npm run reload`로 빌드하고 서버를 다시 띄웁니다. 빌드 없이 서버만 다시 띄우려면 어느 폴더에서든 `orca-diff --restart`를 실행하세요.
 
