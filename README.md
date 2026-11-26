@@ -4,7 +4,11 @@
 
 ## 설치
 
-Git과 Node.js 22.18 이상이 설치된 Mac에서 아래 명령을 실행하세요.
+Git과 Node.js 22.18 이상이 설치된 Mac에서 사용할 수 있습니다.
+
+### 한 줄 설치
+
+orca-diff를 리뷰 도구로 사용한다면 아래 명령으로 설치하세요.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/floydkim/orca-diff/main/install.sh | bash
@@ -12,11 +16,15 @@ curl -fsSL https://raw.githubusercontent.com/floydkim/orca-diff/main/install.sh 
 
 설치 스크립트는 저장소를 `~/.local/share/orca-diff`에 복제하고 빌드한 뒤, `~/.local/bin/orca-diff`에 실행 링크를 만듭니다. `~/.local/bin`이 `PATH`에 없으면 셸 설정에 추가하세요. [설치 스크립트 원문](./install.sh)
 
-직접 복제한 저장소를 설치에 쓰려면, 저장소 루트에서 아래 명령을 실행하세요.
+### 개발용 설치
+
+orca-diff를 직접 수정하면서 사용한다면 작업용 클론을 설치에도 쓰는 편이 간단합니다. 클론의 루트에서 아래 명령을 한 번 실행하세요.
 
 ```bash
 npm ci && npm run build && npm link
 ```
+
+코드를 수정한 뒤에는 같은 클론에서 `npm run reload`를 실행해 새 빌드를 적용하세요.
 
 ## 사용법
 
