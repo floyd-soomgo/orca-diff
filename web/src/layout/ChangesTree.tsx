@@ -29,13 +29,14 @@ interface TreeProps {
   node: DirNode;
   depth: number;
   collapsed: Set<string>;
+  activeDiffPath: string | null;
   toggle: (key: string) => void;
   onOpen: (source: Source, c: Change) => void;
   onMenu: (source: Source, c: Change, e: React.MouseEvent) => void;
 }
 
 // 디렉터리 하나와 그 아래(접힌 디렉터리는 내용을 그리지 않는다)
-function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: TreeProps) {
+function DirChildren({ group, node, depth, collapsed, activeDiffPath, toggle, onOpen, onMenu }: TreeProps) {
   const pad = (d: number) => ({ paddingLeft: BASE_PX + d * INDENT_PX });
   return (
     <>
@@ -48,7 +49,7 @@ function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: 
               <Twisty collapsed={isCollapsed} />
               <span className="name">📁 {d.name}</span>
             </div>
-            {!isCollapsed && <DirChildren group={group} node={d} depth={depth + 1} collapsed={collapsed} toggle={toggle} onOpen={onOpen} onMenu={onMenu} />}
+            {!isCollapsed && <DirChildren group={group} node={d} depth={depth + 1} collapsed={collapsed} activeDiffPath={activeDiffPath} toggle={toggle} onOpen={onOpen} onMenu={onMenu} />}
           </div>
         );
       })}
@@ -56,6 +57,7 @@ function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: 
         <div
           key={c.path}
           className={`row file s-${c.status}`}
+          aria-current={c.path === activeDiffPath || undefined}
           style={pad(depth + 1)}
           onClick={() => onOpen(group.source, c)}
           onContextMenu={(e) => onMenu(group.source, c, e)}
@@ -70,7 +72,8 @@ function DirChildren({ group, node, depth, collapsed, toggle, onOpen, onMenu }: 
 }
 
 export function ChangesTree() {
-  const { selection, openDiff, openFile, refreshTick, toast } = useStore();
+  const { selection, openDiff, openFile, refreshTick, toast, tabs, activeTabId } = useStore();
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
   const selectedSha = selection.mode === 'commits' && selection.shas.length === 1 ? selection.shas[0] : null;
   const [commit, setCommit] = useState<Commit>();
   const detail = commit?.sha === selectedSha ? commit : undefined;
@@ -248,6 +251,9 @@ export function ChangesTree() {
         {trees.map(({ group: g, tree }) => {
           const groupKey = keyOf(g.title, '');
           const groupCollapsed = collapsed.has(groupKey);
+          const activeDiffPath = activeTab?.kind === 'diff' && sourceKey(activeTab.source) === sourceKey(g.source)
+            ? activeTab.change.path
+            : null;
           return (
             <div key={g.title}>
               <div className="row group" onClick={() => toggle(groupKey)}>
@@ -255,7 +261,7 @@ export function ChangesTree() {
                 {g.title} <span className="count">{g.changes.length}</span>
               </div>
               {!groupCollapsed && (
-                <DirChildren group={g} node={tree} depth={0} collapsed={collapsed} toggle={toggle} onOpen={openDiff} onMenu={openFileMenu} />
+                <DirChildren group={g} node={tree} depth={0} collapsed={collapsed} activeDiffPath={activeDiffPath} toggle={toggle} onOpen={openDiff} onMenu={openFileMenu} />
               )}
               {!groupCollapsed && g.changes.length === 0 && <div className="empty">{query ? "일치하는 파일 없음" : "변경 없음"}</div>}
             </div>
