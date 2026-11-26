@@ -16,7 +16,7 @@ export function describeTarget(c: ReviewComment): string {
 }
 
 export function FeedbackPanel() {
-  const { comments, remove, markSent, openDialog } = useFeedback();
+  const { comments, remove, removeSent, markSent, openDialog } = useFeedback();
   const { toast, openDiff, select } = useStore();
   const [showSent, setShowSent] = useState(false);
   const [selectedSentIdList, setSelectedSentIdList] = useState<string[]>([]);
@@ -25,6 +25,7 @@ export function FeedbackPanel() {
   const [target, setTarget] = useState<string>(() => loadTarget(HOST || WT) ?? '');
   const [branch, setBranch] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const deleteSentDialogRef = useRef<HTMLDialogElement>(null);
 
   const loadTerminals = useCallback(async () => {
     try {
@@ -49,6 +50,7 @@ export function FeedbackPanel() {
   }, [loadTerminals]);
 
   const unsent = comments.filter((c) => !c.sentAt);
+  const sentCount = comments.length - unsent.length;
   const visible = showSent ? comments : unsent;
   const selectedSentCommentList = comments.filter((c) => c.sentAt && selectedSentIdList.includes(c.id));
 
@@ -76,6 +78,12 @@ export function FeedbackPanel() {
     } finally {
       setSending(false);
     }
+  };
+
+  const deleteSent = () => {
+    removeSent();
+    setSelectedSentIdList([]);
+    toast(`보낸 피드백 ${sentCount}건을 삭제했습니다`);
   };
 
   const reveal = async (c: ReviewComment) => {
@@ -120,9 +128,14 @@ export function FeedbackPanel() {
           보낸 항목 보기
         </label>
         {showSent && (
-          <button disabled={selectedSentCommentList.length === 0 || sending} onClick={() => deliver(selectedSentCommentList)}>
-            {canSend ? '선택 항목 다시 보내기' : '선택 항목 복사'} ({selectedSentCommentList.length})
-          </button>
+          <>
+            <button disabled={selectedSentCommentList.length === 0 || sending} onClick={() => deliver(selectedSentCommentList)}>
+              {canSend ? '선택 항목 다시 보내기' : '선택 항목 복사'} ({selectedSentCommentList.length})
+            </button>
+            <button disabled={sentCount === 0 || sending} onClick={() => deleteSentDialogRef.current?.showModal()}>
+              보낸 항목 모두 삭제 ({sentCount})
+            </button>
+          </>
         )}
       </div>
       {visible.length === 0 && <div className="empty">diff의 라인 번호를 클릭하거나 드래그해서 코멘트를 다세요</div>}
@@ -170,6 +183,13 @@ export function FeedbackPanel() {
           </div>
         </div>
       ))}
+      <dialog ref={deleteSentDialogRef} className="dialog feedback-delete-dialog" aria-labelledby="delete-sent-feedback-title">
+        <div id="delete-sent-feedback-title">보낸 피드백 {sentCount}건을 삭제할까요?</div>
+        <form method="dialog" className="comment-actions">
+          <button>취소</button>
+          <button onClick={deleteSent}>삭제</button>
+        </form>
+      </dialog>
     </div>
   );
 }

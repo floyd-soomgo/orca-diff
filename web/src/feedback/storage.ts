@@ -67,6 +67,7 @@ interface FeedbackState {
   add(target: CommentTarget, body: string): void;
   update(id: string, patch: Partial<Pick<ReviewComment, 'body' | 'target' | 'stale'>>): void;
   remove(id: string): void;
+  removeSent(): void;
   markSent(ids: string[]): void;
   openDialog(target: CommentTarget, editId?: string, body?: string, commitMessage?: string): void;
   closeDialog(): void;
@@ -84,6 +85,7 @@ export const useFeedback = create<FeedbackState>((set, get) => {
       commit([...get().comments, { id: crypto.randomUUID(), target, body, createdAt: Date.now(), sentAt: null, stale: false }]),
     update: (id, patch) => commit(get().comments.map((c) => (c.id === id ? { ...c, ...patch } : c))),
     remove: (id) => commit(get().comments.filter((c) => c.id !== id)),
+    removeSent: () => commit(get().comments.filter((c) => !c.sentAt)),
     markSent: (ids) => commit(get().comments.map((c) => (ids.includes(c.id) ? { ...c, sentAt: Date.now() } : c))),
     openDialog: (target, editId, body = '', commitMessage) => set({ dialog: { target, editId, body, commitMessage } }),
     closeDialog: () => set({ dialog: null }),

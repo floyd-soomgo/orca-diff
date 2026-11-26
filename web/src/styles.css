@@ -223,6 +223,9 @@ button.primary:hover { background: var(--primary-hover); }
 .dialog-backdrop.transparent { background: transparent; display: block; }
 .dialog { width: 560px; max-width: calc(100% - 32px); background: var(--bg); box-shadow: var(--shadow); border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .dialog .comment-input { min-height: 120px; }
+.feedback-delete-dialog { width: 360px; color: var(--text); }
+.feedback-delete-dialog:not([open]) { display: none; }
+.feedback-delete-dialog::backdrop { background: rgba(31, 35, 41, 0.3); }
 .context-menu { position: fixed; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; min-width: 180px; box-shadow: var(--shadow); }
 .context-menu .row { padding: 4px 12px; }
 
