@@ -1,27 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import type { Location } from '../../../server/shared/types.ts';
 import { getWorktreeFiles, searchCode } from '../api.ts';
-import { editorSelection, highlight, matchPattern, openFindInFiles, useFindInFiles } from '../nav/FindInFilesPanel.tsx';
+import { editorSelection, highlight, matchPattern, openFindInFiles, SearchOptionButtons, useFindInFiles } from '../nav/FindInFilesPanel.tsx';
 import { jumpTo } from '../nav/useNavigation.ts';
 import { useStore } from '../store.ts';
 import { createDoubleShiftDetector } from './doubleShift.ts';
+import { matchIndices, score } from './fileMatch.ts';
 
 const MAX_FILES = 8;
 const MAX_CODE = 30;
 
-function score(path: string, query: string) {
-  const lower = path.toLowerCase();
-  const name = lower.slice(lower.lastIndexOf('/') + 1);
-  if (name === query) return 0;
-  if (name.startsWith(query)) return 1;
-  if (name.includes(query)) return 2;
-  if (lower.includes(query)) return 3;
-  let pos = -1;
-  for (const char of query) {
-    pos = lower.indexOf(char, pos + 1);
-    if (pos < 0) return Infinity;
-  }
-  return 4;
+function highlightPath(path: string, query: string): ReactNode {
+  const hit = new Set(matchIndices(path, query));
+  if (hit.size === 0) return path;
+  return path.split('').map((ch, i) => (hit.has(i) ? <mark key={i}>{ch}</mark> : ch));
 }
 
 type Item = { kind: 'file'; path: string } | { kind: 'code'; loc: Location };
@@ -133,8 +125,16 @@ export function SearchEverywhere() {
 
   return (
     <>
-      <button onClick={open} title="파일·코드 검색 (Shift 두 번, ⌃P, Orca 밖에서는 ⌘P도 가능)">검색</button>
-      <dialog ref={dialog} className="search-everywhere" aria-label="파일·코드 검색">
+      <dialog
+        ref={dialog}
+        className="search-everywhere"
+        aria-label="파일·코드 검색"
+        onClick={(e) => {
+          // 바깥 딤 영역 클릭도 dialog로 들어오므로, 창 사각형 밖일 때만 닫는다(안쪽 여백 클릭은 무시)
+          const r = e.currentTarget.getBoundingClientRect();
+          if (e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) e.currentTarget.close();
+        }}
+      >
         <div className="search-everywhere-bar">
           <input
             ref={input}
@@ -155,6 +155,7 @@ export function SearchEverywhere() {
               e.preventDefault();
             }}
           />
+          <SearchOptionButtons />
           <button onClick={() => dialog.current?.close()}>닫기</button>
         </div>
         <div className="finder-results">
@@ -163,7 +164,7 @@ export function SearchEverywhere() {
           {items.map((item, i) =>
             item.kind === 'file' ? (
               <button key={`f:${item.path}`} aria-current={i === index} onClick={() => choose(item)} onMouseMove={() => setIndex(i)}>
-                {item.path}
+                {highlightPath(item.path, trimmed.toLowerCase())}
               </button>
             ) : null,
           )}

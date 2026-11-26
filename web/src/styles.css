@@ -112,6 +112,9 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .left-pane { display: flex; flex-direction: column; min-width: 200px; background: var(--panel); }
 .main.left-pane-hidden > :is(.left-pane, .splitter.vertical) { display: none; }
 .center-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+/* 좁은 창에서 Commits·Changes를 에디터 아래에 좌우로 둔다 */
+.sidebar-bottom { display: flex; flex: none; min-height: 0; background: var(--panel); }
+.sidebar-bottom > .changes-tree { min-width: 0; }
 
 .splitter { background: var(--border); flex: none; }
 .splitter.vertical { width: 3px; cursor: col-resize; }
@@ -131,9 +134,12 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .dot.worktree { color: var(--warn); }
 .empty { padding: 8px; color: var(--dim); }
 .changes-selection { flex: none; min-width: 0; padding: 4px 8px; border-bottom: 1px solid var(--border); background: var(--panel); }
-.changes-selection summary { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 접고 펴는 제목 줄은 배경색으로 내용과 구분한다(패널 여백을 넘어 양 끝까지 채움) */
+.changes-selection summary { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: -4px -8px 0; padding: 4px 8px; background: var(--hover); }
+.changes-selection[open] > summary { border-bottom: 1px solid var(--border-muted); }
 .changes-selection code { color: var(--dim); font-size: 12px; }
-.commit-detail { padding-top: 4px; max-height: min(160px, 20vh); overflow: auto; }
+.commit-detail { padding-top: 4px; overflow: auto; }
+.changes-selection > .splitter { margin: 4px -8px -4px; }
 .commit-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; font: 12px/1.4 'JetBrains Mono', Menlo, monospace; }
 .commit-detail .meta { color: var(--dim); font-size: 12px; }
 .commit-detail-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -147,6 +153,7 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .editor-tabs { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .tab-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; flex: none; }
 .tab { display: flex; gap: 4px; align-items: center; padding: 4px 8px; border-right: 1px solid var(--border); white-space: nowrap; cursor: default; }
+.tab-tag { margin-left: 6px; color: var(--dim); font: 11px 'JetBrains Mono', Menlo, monospace; }
 .tab.active { background: var(--bg); box-shadow: inset 0 -2px #fd8c73; font-weight: 600; }
 .tab .close { border: none; background: none; padding: 0 2px; color: var(--dim); }
 .tab .close:hover { color: var(--text); }
@@ -187,10 +194,13 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .popup-handle { cursor: grab; user-select: none; touch-action: none; }
 .popup-handle:active { cursor: grabbing; }
 .popup-list { overflow: auto; max-height: 45%; }
-.usage-context { min-height: 0; flex: 1; display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+/* 목록이 짧을 때도 어디까지가 목록인지 보이도록 미리보기는 패널 색으로 구분한다 */
+.usage-context { min-height: 0; flex: 1; display: flex; flex-direction: column; border-top: 1px solid var(--border); background: var(--panel); }
 .usage-context pre { overflow: auto; margin: 0; padding: 8px; line-height: 1.5; user-select: text; }
 .usages-popup .row, .usages-panel .row { gap: 10px; }
 .loc { color: var(--text); flex: none; }
+/* diff에서 찾은 사용처의 파일별 기준(커밋 abc1234 / 워킹트리) */
+.basis-tag { flex: none; margin-left: 6px; color: var(--dim); font-size: 11px; font-weight: normal; }
 .preview { color: var(--dim); overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; }
 
 button.link { border: none; background: none; color: var(--accent); padding: 0; }
@@ -253,10 +263,14 @@ button.primary:hover { background: var(--primary-hover); }
 .monaco-editor.gutter-dragging .selected-text,
 .monaco-editor.gutter-dragging .current-line { background: transparent !important; border: none !important; }
 
-/* 새 파일/삭제 파일 단일 보기 */
-.monaco-editor .full-insert-line { background: var(--add-bg); }
+/* 줄 전체가 추가/삭제된 경우 Monaco는 글자 강조를 줄 전체에 덧칠한다. GitHub처럼 줄 배경만 보이게 한다.
+   shortcut: Monaco가 줄 전체 장식을 style="left:0;width:100%"로 그리는 데 기댄다. Monaco 업데이트로 마크업이 바뀌면 다시 확인 */
+.monaco-editor .cdr.char-insert[style*="width:100%"],
+.monaco-editor .cdr.char-delete[style*="width:100%"] { background: transparent; }
+/* 새 파일/삭제 파일 단일 보기. 줄 배경은 선택 영역 위에 그려지므로 diff와 같은 반투명 색을 쓴다 */
+.monaco-editor .full-insert-line { background: var(--vscode-diffEditor-insertedLineBackground); }
 .monaco-editor .full-insert-margin { background: var(--add-gutter); }
-.monaco-editor .full-delete-line { background: var(--del-bg); }
+.monaco-editor .full-delete-line { background: var(--vscode-diffEditor-removedLineBackground); }
 .monaco-editor .full-delete-margin { background: var(--del-gutter); }
 .file-badge { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 12px; border: 1px solid; }
 .file-badge.new { color: var(--added); border-color: var(--added); background: var(--add-bg); }
@@ -273,14 +287,14 @@ button.primary:hover { background: var(--primary-hover); }
 .usages-panel .panel-title { text-transform: none; font-size: 12px; }
 .search-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--panel); border-bottom: 1px solid var(--border-muted); }
 .search-bar input { flex: 0 1 420px; min-width: 120px; }
-.search-option { min-width: 28px; padding: 0 6px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; }
+.search-option { align-self: stretch; min-width: 28px; padding: 0 6px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; }
 .search-option.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .search-summary { margin-left: 8px; color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search-error { color: var(--error); }
 /* 방향키로 위로 올라갈 때 고정된 검색 줄에 가려지지 않게 합니다 */
 .find-in-files .row, .find-in-files summary { scroll-margin-top: 36px; }
 .find-in-files:focus { outline: none; }
-.preview mark { background: var(--mark-bg); color: var(--text); border-radius: 2px; }
+.preview mark, .usage-context mark, .finder-results mark { background: var(--mark-bg); color: var(--text); border-radius: 2px; }
 
 .nav-loading { position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%); z-index: 980; display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); white-space: nowrap; }
 .nav-loading .hint { color: var(--dim); font-size: 12px; }
@@ -321,13 +335,15 @@ button.primary:hover { background: var(--primary-hover); }
 .panel-actions { align-items: center; }
 
 /* 앱 자체 툴팁(title 속성 대체) */
-.tooltip { position: fixed; z-index: 1100; pointer-events: none; max-width: 360px; padding: 4px 8px; background: var(--tooltip-bg); color: #fff; font-size: 12px; line-height: 1.4; border-radius: 6px; white-space: pre-line; box-shadow: var(--shadow); }
+.tooltip { position: fixed; inset: auto; margin: 0; border: 0; overflow: visible; z-index: 1100; pointer-events: none; max-width: 360px; padding: 4px 8px; background: var(--tooltip-bg); color: #fff; font-size: 12px; line-height: 1.4; border-radius: 6px; white-space: pre-line; box-shadow: var(--shadow); }
 
 .image-diff { display: flex; gap: 12px; padding: 12px; overflow: auto; }
 .image-diff figure { flex: 1; min-width: 0; margin: 0; }
 .image-diff figcaption { color: var(--dim); margin-bottom: 8px; }
 .image-diff img { display: block; max-width: 100%; height: auto; background: repeating-conic-gradient(#aab2bb 0 25%, #d5dae0 0 50%) 0 0 / 16px 16px; }
-.search-everywhere { width: min(760px, 92vw); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+.search-everywhere { width: min(760px, 92vw); height: 80vh; border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+/* 결과 수에 따라 창 높이가 출렁이지 않게 높이를 고정하고 목록이 남은 공간을 채운다 */
+.search-everywhere[open] { display: flex; flex-direction: column; }
 .search-everywhere-bar { display: flex; gap: 6px; }
 .search-everywhere-bar input { flex: 1; }
 .finder-section { display: flex; align-items: center; gap: 6px; padding: 6px 6px 2px; color: var(--dim); font-size: 12px; font-weight: 600; }
@@ -336,7 +352,7 @@ button.primary:hover { background: var(--primary-hover); }
 .finder-results button.code-hit { display: flex; gap: 12px; align-items: baseline; overflow-wrap: normal; }
 .code-hit .preview { flex: 1; min-width: 0; white-space: nowrap; color: var(--text); }
 .code-hit .meta { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: 12px; }
-.finder-results { max-height: 65vh; overflow: auto; margin-top: 8px; }
+.finder-results { flex: 1; min-height: 0; overflow: auto; margin-top: 8px; }
 .finder-results button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: var(--bg); overflow-wrap: anywhere; }
 .finder-results button[aria-current=true], .finder-results button:hover { background: var(--selected); }
 .markdown-pages { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-rows: max-content; flex: 1; min-height: 0; overflow: auto; }

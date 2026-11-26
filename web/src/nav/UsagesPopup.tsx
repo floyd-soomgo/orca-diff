@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getFile } from '../api.ts';
+import { languageOf, monaco } from '../monaco/setup.ts';
 import { getPref, setPref } from '../prefs.ts';
 import { useStore } from '../store.ts';
-import { jumpTo, useNavUi } from './useNavigation.ts';
+import { parseColorized, type Token } from './colorizedLines.ts';
+import { highlight, matchPattern } from './FindInFilesPanel.tsx';
+import { useSourceDescription } from '../layout/EditorTabs.tsx';
+import { basisTitle } from './FindUsagesPanel.tsx';
+import { basisOf, jumpToResult, useNavUi } from './useNavigation.ts';
 
 // 커서 근처에 뜨는 선언/사용처 목록(WebStorm 팝업)
 export function UsagesPopup() {
@@ -20,14 +25,38 @@ export function UsagesPopup() {
   const [file, setFile] = useState<{ path: string; lines: string[] | null }>();
   const [size, setSize] = useState(() => getPref('size.usagesPopup', { width: 760, height: 440 }));
 
+  const override = popup?.override;
+  const originDesc = useSourceDescription(popup?.origin?.source ?? null);
+  const word = popup?.word;
+  const pattern = useMemo(() => (word ? matchPattern(word, { caseSensitive: true, wholeWord: true, regex: false }) : null), [word]);
   useEffect(() => {
     if (!path) return;
+    if (override?.path === path) {
+      setFile({ path, lines: override.content.split(/\r?\n/) });
+      return;
+    }
     let active = true;
     getFile(path).then(({ content }) => {
       if (active) setFile({ path, lines: content.split(/\r?\n/) });
     }).catch(() => { if (active) setFile({ path, lines: null }); });
     return () => { active = false; };
-  }, [path]);
+  }, [path, override]);
+
+  // 미리보기 줄만 칠하면 문자열·주석 중간부터 시작할 때 색이 깨지므로 파일 처음부터 칠한다.
+  // 다만 미리보기 마지막 줄까지만 칠하고(여유 200줄), 같은 파일에서 더 아래로 옮길 때만 다시 칠한다.
+  const [colored, setColored] = useState<{ file: typeof file; lines: Token[][] }>();
+  const needed = selection ? selection.line + 5 : 0;
+  useEffect(() => {
+    // shortcut: 아주 아래쪽 줄은 칠하는 데 오래 걸리므로 색 없이 보여 준다. 느리다는 말이 나오면 줄 상태를 캐시하도록 바꾼다
+    if (!file?.lines || needed > 20000) return;
+    if (colored?.file === file && (colored.lines.length >= needed || colored.lines.length >= file.lines.length)) return;
+    let active = true;
+    monaco.editor.colorize(file.lines.slice(0, needed + 200).join('\n'), languageOf(file.path), { tabSize: 4 })
+      .then((html) => { if (active) setColored({ file, lines: parseColorized(html) }); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [file, needed, colored]);
+  const tokens = colored?.file === file ? colored?.lines : undefined;
 
   useEffect(() => {
     if (!box.current || !popup) return;
@@ -61,7 +90,7 @@ export function UsagesPopup() {
       else if (e.key === 'ArrowUp') setIndex((i) => Math.max(Math.min(i, locations.length - 1) - 1, 0));
       else if (e.key === 'Enter' && selection && !(e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement)) {
         setPopup(null);
-        jumpTo(selection);
+        jumpToResult(selection, popup.origin);
       } else return;
       e.preventDefault();
       e.stopPropagation();
@@ -100,7 +129,7 @@ export function UsagesPopup() {
         <button
           className="link"
           onClick={() => {
-            setUsages({ title: popup.title, locations: popup.locations });
+            setUsages({ title: popup.title, word: popup.word, locations: popup.locations, origin: popup.origin, basis: popup.origin?.label ?? '워킹트리' });
             setBottomPanel('usages');
             setPopup(null);
           }}
@@ -116,22 +145,30 @@ export function UsagesPopup() {
             onClick={() => setIndex(i)}
             onDoubleClick={() => {
               setPopup(null);
-              jumpTo(l);
+              jumpToResult(l, popup.origin);
             }}
           >
             <span className="loc">{l.path}:{l.line}</span>
-            <span className="preview">{l.preview}</span>
+            {basisOf(l.path, popup.origin) && (
+              <span className="basis-tag" title={basisTitle(l.path === popup.origin?.change?.path ? originDesc : '')}>
+                {basisOf(l.path, popup.origin)}
+              </span>
+            )}
+            <span className="preview">{highlight(l.preview, pattern)}</span>
           </div>
         ))}
       </div>
       {selection && <div className="usage-context">
         <div className="popup-title">{selection.path}:{selection.line}
-          <button className="link" onClick={() => { setPopup(null); jumpTo(selection); }}>파일 열기</button>
+          <button className="link" onClick={() => { setPopup(null); jumpToResult(selection, popup.origin); }}>파일 열기</button>
         </div>
         <pre>{file?.path !== selection.path ? '불러오는 중…' : !file.lines ? '파일을 읽을 수 없습니다.' :
           file.lines.slice(Math.max(0, selection.line - 6), selection.line + 5).map((line, i) => {
             const n = Math.max(1, selection.line - 5) + i;
-            return <div key={n} className={n === selection.line ? 'reveal-line' : ''}>{String(n).padStart(4)}  {line}</div>;
+            const lineTokens = tokens?.[n - 1];
+            return <div key={n} className={n === selection.line ? 'reveal-line' : ''}>{String(n).padStart(4)}  {lineTokens
+              ? lineTokens.map((t, j) => <span key={j} className={t.cls}>{highlight(t.text, pattern)}</span>)
+              : highlight(line, pattern)}</div>;
           })}</pre>
       </div>}
     </div>
