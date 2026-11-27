@@ -57,10 +57,11 @@ function TabLabel({ tab, showTag }: { tab: Tab; showTag: boolean }) {
 interface Props {
   renderTab: (tab: Tab) => ReactNode;
   tabActions?: (tab: Tab) => ReactNode;
+  emptyMessage: string;
 }
 
 // 탭은 모두 마운트해 두고 비활성 탭은 숨긴다(스크롤 위치·에디터 상태 유지)
-export function EditorTabs({ renderTab, tabActions }: Props) {
+export function EditorTabs({ renderTab, tabActions, emptyMessage }: Props) {
   const { tabs, activeTabId, setActiveTab, closeTab, closeOthers, closeAll } = useStore();
   const barRef = useRef<HTMLDivElement>(null);
   const diffTitleCount = new Map<string, number>();
@@ -81,7 +82,7 @@ export function EditorTabs({ renderTab, tabActions }: Props) {
   };
 
   if (tabs.length === 0) {
-    return <div className="editor-empty">왼쪽에서 커밋과 파일을 선택하세요</div>;
+    return <div className="editor-empty">{emptyMessage}</div>;
   }
   return (
     <div className="editor-tabs">

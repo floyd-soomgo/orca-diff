@@ -203,6 +203,9 @@ export function App() {
   const { position: sidebarPosition, belowTools: sidebarBelowTools } = useSidebarLayout();
   const narrow = useNarrow();
   const atBottom = sidebarPosition === 'bottom' || (sidebarPosition === 'auto' && narrow);
+  const emptyViewerMessage = leftPaneVisible
+    ? `${atBottom ? '아래' : '왼쪽'}에서 커밋과 파일을 선택하세요`
+    : '상단에서 사이드바를 열거나 Shift를 두 번 눌러 파일을 검색하세요';
   const [sidebarHeight, setSidebarHeight] = usePanelSize('sidebarBottom', 240);
   // 하단 배치의 Commits 너비는 비율로 저장해 창 너비가 바뀌어도 Changes와 같은 비율을 유지한다
   const [commitsRatio, setCommitsRatio] = usePanelSize('commitsRatio', 0.4);
@@ -267,7 +270,7 @@ export function App() {
           </>
         )}
         <div className="center-pane">
-          <EditorTabs renderTab={renderTab} tabActions={fileCommentButton} />
+          <EditorTabs renderTab={renderTab} tabActions={fileCommentButton} emptyMessage={emptyViewerMessage} />
           {sidebarBelowTools ? [tools, sidebar] : [sidebar, tools]}
         </div>
       </div>
