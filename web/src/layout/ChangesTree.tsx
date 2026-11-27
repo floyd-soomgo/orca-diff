@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Change, Commit, Source } from '../../../server/shared/types.ts';
 import { getChanges, getCommits, reveal } from '../api.ts';
 import { copyText, useContextMenu } from '../contextMenu.tsx';
 import { formatCommitMessage } from '../feedback/format.ts';
 import { openCommitDialog, useFeedback } from '../feedback/storage.ts';
 import { commitsSource, sourceKey, useStore } from '../store.ts';
-import { buildChangeTree, collectDirPaths, type DirNode } from './changeTree.ts';
+import { buildFileTree, collectDirPaths, type DirNode } from './changeTree.ts';
 import { Splitter, usePanelSize } from './Splitter.tsx';
 
 const POLL_MS = 3000;
@@ -13,10 +13,21 @@ const POLL_MS = 3000;
 interface Group { title: string; source: Source; changes: Change[] }
 
 // 펼침/접힘 꺾쇠 아이콘(접히면 오른쪽, 펼치면 아래)
-function Twisty({ collapsed }: { collapsed: boolean }) {
+export function Twisty({ collapsed }: { collapsed: boolean }) {
   return (
     <svg className={`twisty ${collapsed ? '' : 'open'}`} width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
       <path fill="currentColor" d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+    </svg>
+  );
+}
+
+export function TreeSearchIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"
+      />
     </svg>
   );
 }
@@ -27,7 +38,7 @@ const keyOf = (group: string, path: string) => `${group}|${path}`;
 
 interface TreeProps {
   group: Group;
-  node: DirNode;
+  node: DirNode<Change>;
   depth: number;
   collapsed: Set<string>;
   activeDiffPath: string | null;
@@ -72,7 +83,7 @@ function DirChildren({ group, node, depth, collapsed, activeDiffPath, toggle, on
   );
 }
 
-export function ChangesTree() {
+export function ChangesTree({ panelTabs }: { panelTabs: ReactNode }) {
   const { selection, openDiff, openFile, refreshTick, toast, tabs, activeTabId } = useStore();
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
   const selectedSha = selection.mode === 'commits' && selection.shas.length === 1 ? selection.shas[0] : null;
@@ -134,7 +145,7 @@ export function ChangesTree() {
         if (query.startsWith('*.')) return name.endsWith(query.slice(1));
         return query.startsWith('.') ? name.endsWith(query) : name.includes(query);
       });
-      return { group: { ...group, changes }, tree: buildChangeTree(changes) };
+      return { group: { ...group, changes }, tree: buildFileTree(changes) };
     });
   }, [groups, query, sources]);
   const toggle = (key: string) =>
@@ -175,7 +186,32 @@ export function ChangesTree() {
 
   return (
     <div className="changes-tree">
-      {searchOpen ? (
+      <div className="tree-panel-toolbar">
+        {panelTabs}
+        {!searchOpen && (
+          <span className="panel-actions">
+            <button className="icon-button small" title="모두 접기" aria-label="모두 접기" onClick={collapseAll}>
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <path fill="currentColor" d="M10.896 2H8.75V.75a.75.75 0 0 0-1.5 0V2H5.104a.25.25 0 0 0-.177.427l2.896 2.896a.25.25 0 0 0 .354 0l2.896-2.896A.25.25 0 0 0 10.896 2ZM8.75 15.25a.75.75 0 0 1-1.5 0V14H5.104a.25.25 0 0 1-.177-.427l2.896-2.896a.25.25 0 0 1 .354 0l2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25Zm-6.5-6.5a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
+              </svg>
+            </button>
+            <button className="icon-button small" title="모두 열기" aria-label="모두 열기" onClick={expandAll}>
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <path fill="currentColor" d="m8.177.677 2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25a.75.75 0 0 1-1.5 0V4H5.104a.25.25 0 0 1-.177-.427L7.823.677a.25.25 0 0 1 .354 0ZM7.25 10.75a.75.75 0 0 1 1.5 0V12h2.146a.25.25 0 0 1 .177.427l-2.896 2.896a.25.25 0 0 1-.354 0l-2.896-2.896A.25.25 0 0 1 5.104 12H7.25v-1.25Zm-5-2a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
+              </svg>
+            </button>
+            <button
+              className={`icon-button small ${filter ? 'active' : ''}`}
+              title="변경 파일 필터"
+              aria-label="변경 파일 필터"
+              onClick={() => setSearchOpen(true)}
+            >
+              <TreeSearchIcon />
+            </button>
+          </span>
+        )}
+      </div>
+      {searchOpen && (
         <div className="panel-title panel-search">
           <input
             autoFocus
@@ -201,35 +237,6 @@ export function ChangesTree() {
             ×
           </button>
         </div>
-      ) : (
-      <div className="panel-title panel-title-row">
-        <span>Changes</span>
-        <span className="panel-actions">
-          <button className="icon-button small" title="모두 접기" aria-label="모두 접기" onClick={collapseAll}>
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-              <path fill="currentColor" d="M10.896 2H8.75V.75a.75.75 0 0 0-1.5 0V2H5.104a.25.25 0 0 0-.177.427l2.896 2.896a.25.25 0 0 0 .354 0l2.896-2.896A.25.25 0 0 0 10.896 2ZM8.75 15.25a.75.75 0 0 1-1.5 0V14H5.104a.25.25 0 0 1-.177-.427l2.896-2.896a.25.25 0 0 1 .354 0l2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25Zm-6.5-6.5a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
-            </svg>
-          </button>
-          <button className="icon-button small" title="모두 열기" aria-label="모두 열기" onClick={expandAll}>
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-              <path fill="currentColor" d="m8.177.677 2.896 2.896a.25.25 0 0 1-.177.427H8.75v1.25a.75.75 0 0 1-1.5 0V4H5.104a.25.25 0 0 1-.177-.427L7.823.677a.25.25 0 0 1 .354 0ZM7.25 10.75a.75.75 0 0 1 1.5 0V12h2.146a.25.25 0 0 1 .177.427l-2.896 2.896a.25.25 0 0 1-.354 0l-2.896-2.896A.25.25 0 0 1 5.104 12H7.25v-1.25Zm-5-2a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM6 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 6 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5ZM12 8a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1 0-1.5h.5A.75.75 0 0 1 12 8Zm2.25.75a.75.75 0 0 0 0-1.5h-.5a.75.75 0 0 0 0 1.5h.5Z" />
-            </svg>
-          </button>
-          <button
-            className={`icon-button small ${filter ? 'active' : ''}`}
-            title="변경 파일 필터"
-            aria-label="변경 파일 필터"
-            onClick={() => setSearchOpen(true)}
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"
-              />
-            </svg>
-          </button>
-        </span>
-      </div>
       )}
       {detail ? (
         <details className="changes-selection" key={detail.sha} open>

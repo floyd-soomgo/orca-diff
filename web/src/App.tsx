@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { type DiffAttachContext, DiffTab } from './diff/DiffTab.tsx';
 import { FileTab } from './diff/FileTab.tsx';
 import { BottomPanel } from './layout/BottomPanel.tsx';
-import { ChangesTree } from './layout/ChangesTree.tsx';
+import { ChangesAndFiles } from './layout/ChangesAndFiles.tsx';
 import { CommitList } from './layout/CommitList.tsx';
 import { EditorTabs } from './layout/EditorTabs.tsx';
 import { Splitter, usePanelSize } from './layout/Splitter.tsx';
@@ -237,7 +237,7 @@ export function App() {
           onResize={(px) => setCommitsRatio(Math.min(px, rowWidth() - 200) / rowWidth())}
           min={200}
         />
-        <ChangesTree />
+        <ChangesAndFiles />
       </div>
     </Fragment>
   );
@@ -261,7 +261,7 @@ export function App() {
                 <CommitList />
               </div>
               <Splitter direction="horizontal" size={commitsHeight} onResize={setCommitsHeight} />
-              <ChangesTree />
+              <ChangesAndFiles />
             </div>
             <Splitter direction="vertical" size={leftWidth} onResize={setLeftWidth} min={200} />
           </>

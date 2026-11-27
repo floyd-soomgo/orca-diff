@@ -114,7 +114,12 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .center-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 /* 좁은 창에서 Commits·Changes를 에디터 아래에 좌우로 둔다 */
 .sidebar-bottom { display: flex; flex: none; min-height: 0; background: var(--panel); }
-.sidebar-bottom > .changes-tree { min-width: 0; }
+.changes-and-files, .file-browser-pane, .project-files { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.file-browser-pane[hidden] { display: none; }
+.tree-panel-toolbar { display: flex; align-items: center; justify-content: space-between; flex: none; padding-right: 4px; border-bottom: 1px solid var(--border); }
+.project-files button.row { width: 100%; border: none; border-radius: 0; background: transparent; text-align: left; }
+.project-files button.row:hover { background: var(--hover); }
+.project-files .name { overflow: hidden; text-overflow: ellipsis; }
 
 .splitter { background: var(--border); flex: none; }
 .splitter.vertical { width: 3px; cursor: col-resize; }
