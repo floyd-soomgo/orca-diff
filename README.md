@@ -80,6 +80,7 @@ orca-diff --update
 | Find in Files (하단 도구 창) | Cmd+Shift+F, Orca 단축키와 겹치면 Ctrl+Shift+F. 검색 창에서는 ⌘Enter. 결과는 ↑↓로 고르고 Enter로 엶 |
 | Find Usages (하단 도구 창) | fn+⌥+F7 (Mac은 F7이 미디어 키라 fn 필요), 또는 우클릭 → 사용처 찾기 |
 | 뒤로 / 앞으로 | Alt+← / Alt+→, 마우스 뒤로/앞으로 버튼 (일반 브라우저에서는 Cmd+[ / Cmd+]도 동작) |
+| 현재 뷰어 탭 닫기 | Ctrl+W (텍스트 입력 중에는 적용되지 않음) |
 | 라인 코멘트 | diff 라인 번호 클릭, 드래그 또는 Shift+클릭으로 범위 |
 | 코멘트 저장 / 취소 | Cmd+Enter / Esc |
 | 에디터 안에서 찾기 | Ctrl+F (Orca 안에서는 Orca가 Cmd+F를 가져감), 일반 브라우저에서는 Cmd+F도 동작 |

@@ -51,7 +51,7 @@ export function FeedbackPanel() {
 
   const unsent = comments.filter((c) => !c.sentAt);
   const sentCount = comments.length - unsent.length;
-  const visible = showSent ? comments : unsent;
+  const visible = showSent ? [...comments].sort((a, b) => b.createdAt - a.createdAt) : unsent;
   const selectedSentCommentList = comments.filter((c) => c.sentAt && selectedSentIdList.includes(c.id));
 
   // Orca가 있고 대상 터미널이 있으면 입력창에 넣고, 아니면 클립보드에 복사한다
