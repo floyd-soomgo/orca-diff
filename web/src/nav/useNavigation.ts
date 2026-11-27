@@ -274,12 +274,18 @@ export function useGlobalNavKeys() {
       const inTextInput = target instanceof HTMLElement
         && (target.isContentEditable || target.matches('input, textarea, select'))
         && !target.matches('.monaco-editor textarea.inputarea[readonly]');
-      const action = navKeyAction({ key: e.key, metaKey: e.metaKey, altKey: e.altKey, inTextInput });
+      const action = navKeyAction({
+        key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey, inTextInput,
+      });
       if (!action) return;
       e.preventDefault();
       e.stopPropagation();
       if (action === 'back') back();
-      else forward();
+      else if (action === 'forward') forward();
+      else if (!e.repeat) {
+        const { activeTabId, closeTab } = useStore.getState();
+        if (activeTabId !== null) closeTab(activeTabId);
+      }
     };
     const onMouse = (e: MouseEvent) => {
       if (e.button === 3) back();
