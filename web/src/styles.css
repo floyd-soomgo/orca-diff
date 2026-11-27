@@ -133,7 +133,7 @@ input[type='checkbox'] { margin: 0; width: 14px; height: 14px; accent-color: var
 .project-files button.row:hover { background: var(--hover); }
 .project-files .name { overflow: hidden; text-overflow: ellipsis; }
 
-.splitter { background: var(--border); flex: none; }
+.splitter { background: var(--border); flex: none; touch-action: none; }
 .splitter.vertical { width: 3px; cursor: col-resize; }
 .splitter.horizontal { height: 3px; cursor: row-resize; }
 .splitter:hover { background: var(--accent); }
